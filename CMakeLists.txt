@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.28)
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg.json" AND NOT CMAKE_TOOLCHAIN_FILE)
+    if(DEFINED ENV{VCPKG_ROOT})
+        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+    endif()
+endif()
+
 project(Baregear)
 set(APP_VERSION 1.0)
 
