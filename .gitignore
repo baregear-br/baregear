@@ -10,6 +10,26 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+*.tmp
+*_audio.h
+
+# Compiled Binary
+baregear
+*.so
+*.dll
+*.exe
+build/
+*.tar*
+*.zip
+*.msix
+*.msi
+*.AppImage
+
+# Code Editor Files
+.idea
+*.sln
+*.suo
+*.vc*
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
