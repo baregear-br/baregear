@@ -1,0 +1,16 @@
+{
+  "name": "baregear",
+  "version": "1.0",
+  "dependencies": [
+    {
+      "name": "llvm",
+      "version>=": "19.1"
+    },
+    {
+      "name": "qt5",
+      "features": ["qt5core", "qt5network"]
+    },
+    "zlib",
+    "pulseaudio"
+  ]
+}
