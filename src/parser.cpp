@@ -116,15 +116,16 @@ std::vector<AST*> Parser::statement() {
     } else if (current == TOKEN_ELSE) {
         if (MATCH(idx + 1, TOKEN_IF)) {
             idx++;
-        AST* condition = expr();
-        if (MATCH(idx, TOKEN_COLON)) {
-            idx++;
-            std::vector<AST*> elseIfBody;
-            int startCol = T(idx).col;
-            while (!isAtEnd() && T(idx).col > startCol) {
-                elseIfBody.push_back(expr());
+            AST* condition = expr();
+            if (MATCH(idx, TOKEN_COLON)) {
+                idx++;
+                std::vector<AST*> elseIfBody;
+                int startCol = T(idx).col;
+                while (!isAtEnd() && T(idx).col > startCol) {
+                    elseIfBody.push_back(expr());
+                }
+                nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
             }
-            nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
         } else {
             idx++;
             if (MATCH(idx, TOKEN_COLON)) {
@@ -136,7 +137,6 @@ std::vector<AST*> Parser::statement() {
                 }
                 nodes.push_back(new IfWhileNode(nullptr, TOKEN_ELSE));
             }
-        }
         }
     } else if (current == TOKEN_ELIF) {
         idx++;
@@ -258,7 +258,7 @@ AST* Parser::factor() {
             }
 
             return new CallNode(funcName, argNodes);
-        } else if (MATCH(idx, TOKEN_COLON)) {
+        } else {
             // Check if this is a function call without parentheses: func arg1, arg2
             // Look ahead to see if next token is a valid argument (identifier, string, number)
             int nextIdx = idx;
@@ -268,7 +268,7 @@ AST* Parser::factor() {
                 idx++; // skip function name
                 
                 std::vector<AST*> args;
-                // Collect arguments until end of line or comma
+                // Collect arguments until end of line
                 while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).row == T(saveIdx).row) {
                     if (TT(idx) == TOKEN_COMMA) {
                         idx++;
@@ -342,4 +342,8 @@ AST* Parser::factor() {
     
     idx++;
     return nullptr;
+}
+
+Parser::~Parser() {
+    // Clean up any allocated resources if needed
 }
