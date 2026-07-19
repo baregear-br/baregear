@@ -217,6 +217,10 @@ std::vector<TOKEN> Lexer::lex() {
     return tokens;
 }
 
+Lexer::~Lexer() {
+    // Clean up any allocated resources if needed
+}
+
 bool Lexer::isAtEnd() {
     return idx > code.size();
 }

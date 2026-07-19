@@ -36,6 +36,11 @@
 #include <sstream>
 #include <iomanip>
 
+#include <lexer.h>
+#include <parser.h>
+#include <preprocessor.h>
+#include <transpiler.h>
+
 // Not needed http or https value of BUG_REPORT_URL
 #define BUG_REPORT_URL              "www.example.com/bugs"
 #define MINIAUDIO_IMPLEMENTATION
@@ -127,6 +132,12 @@ int main(int argc, char *argv[]) {
 
     QString sourceFile = positionalArgs.first();
     qDebug() << "Compiling:" << sourceFile;
+
+    Lexer lex = Lexer("print \"Hello World\"");
+    Parser parser = Parser(lex.lex());
+    Preprocessor pp = Preprocessor(parser.parse());
+    Transpiler trns = Transpiler(pp.preprocess());
+    std::cout << trns.transpile() << std::endl;
 
     return 0;
 }

@@ -25,6 +25,22 @@
 
 std::map<std::string, DATATYPE> variableIndex;
 
+std::string Transpiler::transpile() {
+    std::stringstream str;
+    
+    // Output C header
+    str << "#include <stdio.h>" << std::endl;
+    str << "#include <stdlib.h>" << std::endl;
+    str << "#include <string.h>" << std::endl;
+    str << std::endl;
+    
+    // Process all AST nodes
+    for (AST* node : nodes)
+        str << factor(node) << std::endl;
+    
+    return str.str();
+}
+
 std::string Transpiler::factor(AST* body) {
     if (auto fn = dynamic_cast<FunctionNode*>(body)) {
         std::stringstream str;
@@ -37,6 +53,16 @@ std::string Transpiler::factor(AST* body) {
             str << factor(body) << std::endl;
 
         str << "}" << std::endl;
+        return str.str();
+    }
+    else if (auto call = dynamic_cast<CallNode*>(body)) {
+        std::stringstream str;
+        str << call->name << "(";
+        for (size_t i = 0; i < call->param.size(); i++) {
+            if (i > 0) str << ", ";
+            str << factor(call->param[i]);
+        }
+        str << ");";
         return str.str();
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
