@@ -45,8 +45,10 @@ std::string Transpiler::factor(AST* body) {
     if (auto fn = dynamic_cast<FunctionNode*>(body)) {
         std::stringstream str;
         str << "void " << fn->name << "(";
-        for (VariableNode* param : fn->param)
-            str << getCDataType(param->datatype) << param->name;
+        for (AST* param : fn->param) {
+            if (auto varParam = dynamic_cast<VariableNode*>(param))
+                str << getCDataType(varParam->datatype) << varParam->name;
+        }
 
         str << ") {" << std::endl;
         for (AST* body : fn->body)
@@ -64,6 +66,19 @@ std::string Transpiler::factor(AST* body) {
         }
         str << ");";
         return str.str();
+    }
+    else if (auto val = dynamic_cast<ValueNode*>(body)) {
+        // Check if the value is a string (contains non-numeric characters)
+        try {
+            std::stol(val->value);
+            return val->value; // It's a number
+        } catch (std::invalid_argument&) {
+            // It's a string, add quotes
+            return "\"" + val->value + "\"";
+        } catch (std::out_of_range&) {
+            // It's a string, add quotes
+            return "\"" + val->value + "\"";
+        }
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
 	    variableIndex.insert({var->name, var->datatype});
@@ -85,8 +100,6 @@ std::string Transpiler::factor(AST* body) {
         else
             error("Illegal Value Used On " + asn->name, 0, 0);
     }
-    else if (auto val = dynamic_cast<ValueNode*>(body))
-	    return val->value;
     else if (auto bon = dynamic_cast<BinOpNode*>(body)) {
         std::string op;
         switch (bon->op) {

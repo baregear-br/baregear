@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
 #include <iostream>
 #include <vector>
 #include <variant>
@@ -249,15 +250,7 @@ AST* Parser::factor() {
             }
             idx++; // skip closing paren
             
-            // Convert AST* args to VariableNode* args for CallNode
-            std::vector<VariableNode*> argNodes;
-            for (auto* arg : args) {
-                if (auto* varNode = dynamic_cast<VariableNode*>(arg)) {
-                    argNodes.push_back(varNode);
-                }
-            }
-
-            return new CallNode(funcName, argNodes);
+            return new CallNode(funcName, args);
         } else {
             // Check if this is a function call without parentheses: func arg1, arg2
             // Look ahead to see if next token is a valid argument (identifier, string, number)
@@ -268,8 +261,12 @@ AST* Parser::factor() {
                 idx++; // skip function name
                 
                 std::vector<AST*> args;
-                // Collect arguments until end of line
-                while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).row == T(saveIdx).row) {
+                // Collect arguments until end of line, semicolon, dot, or colon mismatch
+                while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && TT(idx) != TOKEN_DOT && T(idx).row == T(saveIdx).row) {
+                    // Check for colon mismatch
+                    if (TT(idx) == TOKEN_COLON && TT(idx + 1) != TOKEN_COLON) {
+                        break;
+                    }
                     if (TT(idx) == TOKEN_COMMA) {
                         idx++;
                         continue;
@@ -277,17 +274,7 @@ AST* Parser::factor() {
                     args.push_back(expr());
                 }
                 
-                // Convert AST* args to VariableNode* args for CallNode
-                std::vector<VariableNode*> argNodes;
-                for (auto* arg : args) {
-                    if (auto* varNode = dynamic_cast<VariableNode*>(arg)) {
-                        argNodes.push_back(varNode);
-                    } else if (auto* valNode = dynamic_cast<ValueNode*>(arg)) {
-                        argNodes.push_back(new VariableNode(valNode->value, VARIANT));
-                    }
-                }
-                
-                return new CallNode(funcName, argNodes);
+                return new CallNode(funcName, args);
             }
         }
         if (MATCH(idx, TOKEN_COLON)) {
@@ -318,7 +305,10 @@ AST* Parser::factor() {
         return new AssignNode(name, factor());
     }
     else if (op == TOKEN_LPAREN) {
-        const char openBracket = T(idx).value[0];
+        char openBracket = '(';
+        if (!T(idx).value.empty()) {
+            openBracket = T(idx).value[0];
+        }
         char closeBracket;
         
         switch (openBracket) {

@@ -48,6 +48,7 @@ enum TOKEN_TYPE {
     TOKEN_IDENTIFIER,
     TOKEN_ASSIGNMENT,
     TOKEN_COMMA,
+    TOKEN_DOT,
 
     // Extended Tokens
     TOKEN_INT,

@@ -146,6 +146,10 @@ std::vector<TOKEN> Lexer::lex() {
                 tkn.type = TOKEN_SEMICOLON;
                 break;
                 
+            case '.':
+                tkn.type = TOKEN_DOT;
+                break;
+                
             case '&':
                 tkn.type = TOKEN_AND;
                 break;
