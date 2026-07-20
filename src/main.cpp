@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
     QString sourceFile = positionalArgs.first();
     qDebug() << "Compiling:" << sourceFile;
 
-    Lexer lex = Lexer("print \"Hello World\"");
+    Lexer lex = Lexer("x = 10\nprint \"Hello World\"");
     Parser parser = Parser(lex.lex());
     Preprocessor pp = Preprocessor(parser.parse());
     Transpiler trns = Transpiler(pp.preprocess());
