@@ -68,8 +68,8 @@ struct VariableNode : AST {
 };
 
 struct CallNode : VariableNode {
-    std::vector<VariableNode*> param;
-    CallNode(std::string n, std::vector<VariableNode*> p) :
+    std::vector<AST*> param;
+    CallNode(std::string n, std::vector<AST*> p) :
                                                            VariableNode(std::move(n), VARIANT),
                                                            param(std::move(p)) { }
 };
@@ -77,7 +77,7 @@ struct CallNode : VariableNode {
 struct FunctionNode : CallNode {
     std::vector<AST*> body;
     FunctionNode(std::string n, std::vector<VariableNode*> p, std::vector<AST*> b) :
-                                                        CallNode(std::move(n), std::move(p)),
+                                                        CallNode(std::move(n), std::vector<AST*>(p.begin(), p.end())),
                                                         body(std::move(b)) { }
 };
 
