@@ -168,6 +168,7 @@ std::vector<AST*> Parser::statement() {
     } else if (current == TOKEN_IDENTIFIER) {
         std::vector<std::string> varNames;
         int saveIdx = idx;
+        bool isAssignment = false;
 
         while (true) {
             if (TT(idx) == TOKEN_IDENTIFIER) {
@@ -177,7 +178,8 @@ std::vector<AST*> Parser::statement() {
                     idx++;
                     continue;
                 } else if (MATCH(idx, TOKEN_ASSIGNMENT)) {
-                    idx++;
+                    idx++; // skip '='
+                    isAssignment = true;
                     break;
                 } else {
                     idx = saveIdx;
@@ -191,7 +193,7 @@ std::vector<AST*> Parser::statement() {
             }
         }
 
-        if (varNames.size() > 1) {
+        if (isAssignment) {
             AST* value = expr();
             for (const auto& varName : varNames) {
                 nodes.push_back(new AssignNode(varName, value));
