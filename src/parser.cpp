@@ -250,7 +250,15 @@ AST* Parser::factor() {
             }
             idx++; // skip closing paren
             
-            return new CallNode(funcName, args);
+            // Convert AST* args to VariableNode* args for CallNode
+            std::vector<VariableNode*> argNodes;
+            for (auto* arg : args) {
+                if (auto* varNode = dynamic_cast<VariableNode*>(arg)) {
+                    argNodes.push_back(varNode);
+                }
+            }
+
+            return new CallNode(funcName, argNodes);
         } else {
             // Check if this is a function call without parentheses: func arg1, arg2
             // Look ahead to see if next token is a valid argument (identifier, string, number)
@@ -274,7 +282,17 @@ AST* Parser::factor() {
                     args.push_back(expr());
                 }
                 
-                return new CallNode(funcName, args);
+                // Convert AST* args to VariableNode* args for CallNode
+                std::vector<VariableNode*> argNodes;
+                for (auto* arg : args) {
+                    if (auto* varNode = dynamic_cast<VariableNode*>(arg)) {
+                        argNodes.push_back(varNode);
+                    } else if (auto* valNode = dynamic_cast<ValueNode*>(arg)) {
+                        argNodes.push_back(new VariableNode(valNode->value, VARIANT));
+                    }
+                }
+
+                return new CallNode(funcName, argNodes);
             }
         }
         if (MATCH(idx, TOKEN_COLON)) {
