@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
             std::cout << QCoreApplication::applicationName().toStdString() << std::endl;
             std::cout << std::endl;
             int bracketPos = help.indexOf('[');
-            std::cout << "Usage: pdc " << help.mid(bracketPos, firstNewline - bracketPos).toStdString() << std::endl;
+            std::cout << "Usage: baregear " << help.mid(bracketPos, firstNewline - bracketPos).toStdString() << std::endl;
             std::cout << help.mid(firstNewline + 1).toStdString();
         } else {
             std::cout << help.toStdString();
