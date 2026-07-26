@@ -249,7 +249,7 @@ AST* Parser::factor() {
                 }
             }
             idx++; // skip closing paren
-            
+
             return new CallNode(funcName, args);
         } else {
             // Check if this is a function call without parentheses: func arg1, arg2
@@ -314,13 +314,13 @@ AST* Parser::factor() {
             case '(': closeBracket = ')'; break;
             case '[': closeBracket = ']'; break;
             case '{': closeBracket = '}'; break;
-            default: closeBracket = ')';
+            default: break;
         }
         
         idx++; // skip opening bracket
         AST* innerExpr = expr();
 
-        if (!MATCH(idx, TOKEN_RPAREN)) {
+        if (MATCH(idx, TOKEN_RPAREN) == false && closeBracket != NULL) {
             error("Expected closing bracket '" + std::string(1, closeBracket) + "'", T(idx).row, T(idx).col);
             return nullptr;
         }
@@ -334,5 +334,6 @@ AST* Parser::factor() {
 }
 
 Parser::~Parser() {
-    // Clean up any allocated resources if needed
+    idx = 0;
+    tokens.clear();
 }

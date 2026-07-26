@@ -132,14 +132,14 @@ inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
 };
 
 struct TOKEN {
-    int row = 1, col = 1;
+    unsigned int row = 1, col = 1;
     std::string value;
     TOKEN_TYPE type;
 };
 
 class Lexer {
 private:
-    int row = 1, col = 1, idx = 0;
+    unsigned int row = 1, col = 1, idx = 0;
     std::string code;
 
     void advance();
