@@ -25,11 +25,11 @@
 #include <definations.h>
 
 #define isAl(x) (x >= 'A' && x <= 'Z' || x >= 'a' && x <= 'z')
-#define isNum(x) (x >= '1' && x <= '9')
+#define isNum(x) (x >= '0' && x <= '9')
 
 std::vector<TOKEN> Lexer::lex() {
     std::vector<TOKEN> tokens;
-    
+
     while (!isAtEnd()) {
         char32_t c = code[idx];
         TOKEN tkn;

@@ -35,6 +35,8 @@
 #include <zlib.h>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include <string>
 
 #include <lexer.h>
 #include <parser.h>
@@ -45,6 +47,11 @@
 #define BUG_REPORT_URL              "www.example.com/bugs"
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
+
+std::stringstream stream;
+std::vector<std::string> sourceLines;
+bool errorHappens = false;
+QCommandLineParser qparser;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++11-narrowing"
@@ -84,10 +91,6 @@ namespace {
     }
 }
 #pragma clang diagnostic pop
-
-std::ifstream stream;
-bool errorHappens = false;
-QCommandLineParser qparser;
 
 void success() { 
     play_audio(success_mp3, success_mp3_len); 
@@ -133,7 +136,24 @@ int main(int argc, char *argv[]) {
     QString sourceFile = positionalArgs.first();
     qDebug() << "Compiling:" << sourceFile;
 
-    Lexer lex = Lexer("x = 10\nprint \"Hello World\"");
+    std::ifstream file(sourceFile.toStdString());
+    if (!file.is_open()) {
+        std::cerr << "Error: Cannot open file " << sourceFile.toStdString() << std::endl;
+        return 1;
+    }
+
+    std::string sourceCode((std::istreambuf_iterator<char>(file)),
+                          std::istreambuf_iterator<char>());
+    file.close();
+    stream << sourceCode;
+    
+    // Store source code lines for error reporting
+    std::istringstream iss(sourceCode);
+    std::string line;
+    while (std::getline(iss, line))
+        sourceLines.push_back(line);
+
+    Lexer lex = Lexer(sourceCode);
     Parser parser = Parser(lex.lex());
     Preprocessor pp = Preprocessor(parser.parse());
     Transpiler trns = Transpiler(pp.preprocess());
@@ -143,19 +163,18 @@ int main(int argc, char *argv[]) {
 }
 
 std::string getLine(int index) {
-    int i = 0;
-    std::string tmp;
-    while (std::getline(stream, tmp)) {
-        if (i == index)
-            return tmp;
-        i++;
-    }
+    if (index >= 1 && index <= sourceLines.size())
+        return sourceLines[index - 1];
     return "";
 }
 
-void error(std::string message, int row, int col) {
+void error(std::string message, unsigned int row, unsigned int col) {
     errorHappens = true;
     printNotice(row, col, 196, message);
+}
+
+void warn(std::string message, unsigned int row, unsigned int col) {
+    printNotice(row, col, 226, message);
 }
 
 void bugDetected(std::string message) {

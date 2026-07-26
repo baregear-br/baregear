@@ -148,14 +148,14 @@ struct ReturnNode : AST {
 class Parser {
 private:
     std::vector<TOKEN> tokens;
-    int idx = 0;
+    unsigned int idx = 0;
 
     AST* term();
     AST* expr();
     AST* factor();
     std::vector<AST*> statement();
     inline bool isAtEnd() {
-        return idx > tokens.size();
+        return idx >= tokens.size();
     }
 public:
     Parser(std::vector<TOKEN> t) : tokens(std::move(t)) { }

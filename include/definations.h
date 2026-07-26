@@ -33,9 +33,9 @@
     int j = MAX_PREV_LINES; \
     while (row < j) \
         j--; \
-    j = row > j && j >= 1 ? row - j : row; \
+    j = row > j && j >= 1 ? row - j : 1; \
     \
-    for(int k = 0; (j + k) < row; k++) \
+    for(int k = 0; (j + k) <= row; k++) \
         std::cout << getLine(j + k) << std::endl; \
     \
     printMargin(col); \
@@ -46,8 +46,8 @@
 } while (0)
 
 extern std::string getLine(int index);
-extern void error(std::string, int row, int col);
-extern void warn(std::string, int row, int col);
+extern void error(std::string, unsigned int row, unsigned int col);
+extern void warn(std::string, unsigned int row, unsigned int col);
 extern void success();
 extern void failure();
 extern void bugDetected(std::string message);
