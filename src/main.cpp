@@ -134,8 +134,6 @@ int main(int argc, char *argv[]) {
     }
 
     QString sourceFile = positionalArgs.first();
-    qDebug() << "Compiling:" << sourceFile;
-
     std::ifstream file(sourceFile.toStdString());
     if (!file.is_open()) {
         std::cerr << "Error: Cannot open file " << sourceFile.toStdString() << std::endl;
