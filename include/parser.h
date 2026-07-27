@@ -63,8 +63,9 @@ struct BinOpNode : AST {
 struct VariableNode : AST {
     std::string name;
     DATATYPE datatype;
+    bool isDecl;
 
-    VariableNode(std::string n, DATATYPE d) : name(std::move(n)), datatype(std::move(d)) { }
+    VariableNode(std::string n, DATATYPE d, bool decl = false) : name(std::move(n)), datatype(std::move(d)), isDecl(decl) { }
 };
 
 struct CallNode : VariableNode {

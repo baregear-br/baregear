@@ -137,9 +137,7 @@ std::vector<TOKEN> Lexer::lex() {
                 continue;
                 
             case '\n':
-                col = 1;
-                row++;
-                idx++;
+                advance();
                 continue;
                 
             case ';':
@@ -170,9 +168,10 @@ std::vector<TOKEN> Lexer::lex() {
             case '"': {
                 advance();
                 std::string text;
-                while (peek() != '"') {
+                while (peek() != c) {
                     if (isAtEnd()) {
-                        error("String literal is not closed with " + c + '.', row, col);
+                        error(std::string("String literal is not closed with ") +
+                            (c == '"' ? "\"" : "'" ) + ".", row, col);
                         break;
                     }
                     text += code[idx];
@@ -230,7 +229,7 @@ bool Lexer::isAtEnd() {
 }
 
 void Lexer::advance() {
-    if (getLine(row).size() > col) {
+    if (col >= getLine(row).size()) {
         col = 1;
         row++;
     }

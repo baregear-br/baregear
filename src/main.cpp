@@ -136,7 +136,8 @@ int main(int argc, char *argv[]) {
     QString sourceFile = positionalArgs.first();
     std::ifstream file(sourceFile.toStdString());
     if (!file.is_open()) {
-        std::cerr << "Error: Cannot open file " << sourceFile.toStdString() << std::endl;
+        std::cerr << "Error: Cannot open file of " << sourceFile.toStdString() << std::endl;
+        failure();
         return 1;
     }
 
