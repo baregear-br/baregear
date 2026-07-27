@@ -25,8 +25,10 @@
 
 extern bool errorHappens;
 std::vector<AST*> Preprocessor::preprocess() {
-    if (errorHappens)
+    if (errorHappens) {
+        failure();
         std::exit(1);
+    }
 
     std::vector<AST*> optimizedNodes;
     for (idx = 0; idx < nodes.size(); idx++) {

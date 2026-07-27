@@ -181,7 +181,15 @@ std::vector<AST*> Parser::statement() {
                     break;
                 } else {
                     idx = saveIdx;
-                    nodes.push_back(expr());
+                    TOKEN_TYPE next = TT(idx + 1);
+                    if (next == TOKEN_STRING || next == TOKEN_NUMBER ||
+                        next == TOKEN_IDENTIFIER || next == TOKEN_LPAREN) {
+                        nodes.push_back(expr());
+                    } else {
+                        for (const auto& varName : varNames) {
+                            nodes.push_back(new VariableNode(varName, VARIANT, true));
+                        }
+                    }
                     break;
                 }
             } else {
@@ -191,7 +199,10 @@ std::vector<AST*> Parser::statement() {
             }
         }
 
-        if (varNames.size() > 1) {
+        if (!varNames.empty() && idx > 0 && TT(idx - 1) == TOKEN_ASSIGNMENT) {
+            for (const auto& varName : varNames) {
+                nodes.push_back(new VariableNode(varName, VARIANT, true));
+            }
             AST* value = expr();
             for (const auto& varName : varNames) {
                 nodes.push_back(new AssignNode(varName, value));
@@ -234,7 +245,7 @@ AST* Parser::factor() {
         // Check if this is a function definition (followed by colon)
         int saveIdx = idx;
         idx++;
-        if (MATCH(idx, TOKEN_LPAREN)) {
+        if (idx < tokens.size() && MATCH(idx, TOKEN_LPAREN)) {
             // Function call with arguments: func(arg1, arg2)
             idx = saveIdx;
             std::string funcName = T(idx).value;
@@ -251,11 +262,12 @@ AST* Parser::factor() {
             idx++; // skip closing paren
 
             return new CallNode(funcName, args);
-        } else {
+        }
+        else {
             // Check if this is a function call without parentheses: func arg1, arg2
             // Look ahead to see if next token is a valid argument (identifier, string, number)
             int nextIdx = idx;
-            if (TT(nextIdx) == TOKEN_IDENTIFIER || TT(nextIdx) == TOKEN_STRING || TT(nextIdx) == TOKEN_NUMBER) {
+            if (nextIdx < tokens.size() && (TT(nextIdx) == TOKEN_IDENTIFIER || TT(nextIdx) == TOKEN_STRING || TT(nextIdx) == TOKEN_NUMBER)) {
                 idx = saveIdx;
                 std::string funcName = T(idx).value;
                 idx++; // skip function name
@@ -264,7 +276,7 @@ AST* Parser::factor() {
                 // Collect arguments until end of line, semicolon, dot, or colon mismatch
                 while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && TT(idx) != TOKEN_DOT && T(idx).row == T(saveIdx).row) {
                     // Check for colon mismatch
-                    if (TT(idx) == TOKEN_COLON && TT(idx + 1) != TOKEN_COLON) {
+                    if (TT(idx) == TOKEN_COLON && (idx + 1 >= tokens.size() || TT(idx + 1) != TOKEN_COLON)) {
                         break;
                     }
                     if (TT(idx) == TOKEN_COMMA) {
@@ -277,7 +289,7 @@ AST* Parser::factor() {
                 return new CallNode(funcName, args);
             }
         }
-        if (MATCH(idx, TOKEN_COLON)) {
+        if (idx < tokens.size() && MATCH(idx, TOKEN_COLON)) {
             // Function definition: funcname(args):
             idx = saveIdx;
             std::string funcName = T(idx).value;
@@ -320,7 +332,7 @@ AST* Parser::factor() {
         idx++; // skip opening bracket
         AST* innerExpr = expr();
 
-        if (MATCH(idx, TOKEN_RPAREN) == false && closeBracket != NULL) {
+        if (MATCH(idx, TOKEN_RPAREN) == false && (closeBracket == ')' || closeBracket == ']' || closeBracket == '}')) {
             error("Expected closing bracket '" + std::string(1, closeBracket) + "'", T(idx).row, T(idx).col);
             return nullptr;
         }

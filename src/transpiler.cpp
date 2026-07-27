@@ -81,12 +81,15 @@ std::string Transpiler::factor(AST* body) {
         }
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
-	    variableIndex.insert({var->name, var->datatype});
-        return getCDataType(var->datatype) + ' ' + var->name + ';';
+        if (var->isDecl) {
+            variableIndex.insert({var->name, var->datatype});
+            return getCDataType(var->datatype) + ' ' + var->name + ';';
+        }
+        return std::string(var->name);
     }
     else if (auto asn = dynamic_cast<AssignNode*>(body)) {
         if (!variableIndex.contains(asn->name))
-            bugDetected("Variable Is Using Without Declaration");
+            variableIndex.insert({asn->name, VARIANT});
         else if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
             try {
                 std::stol(val->value);
