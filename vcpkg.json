@@ -1,10 +1,11 @@
 {
   "name": "baregear",
   "version": "1.0",
+  "builtin-baseline": "6d9d7df564a1ccdaa994e4ad39ccd4a32360867b",
   "dependencies": [
     {
       "name": "llvm",
-      "version>=": "19.1"
+      "version>=": "18.1.6"
     },
     {
       "name": "qt5",
