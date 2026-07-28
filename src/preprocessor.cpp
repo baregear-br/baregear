@@ -24,7 +24,7 @@
 #include <definations.h>
 
 extern bool errorHappens;
-std::vector<AST*> Preprocessor::preprocess() {
+std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
     if (errorHappens) {
         failure();
         std::exit(1);
@@ -37,9 +37,8 @@ std::vector<AST*> Preprocessor::preprocess() {
         // Skip nodes in inactive conditional blocks
         if (!conditionalBlockActive && inConditionalBlock) {
             if (auto* ifNode = dynamic_cast<IfWhileNode*>(node)) {
-                if (ifNode->sign == TOKEN_IF || ifNode->sign == TOKEN_ELSE) {
+                if (ifNode->sign == TOKEN_IF || ifNode->sign == TOKEN_ELSE)
                     processIfWhileNode(ifNode);
-                }
             }
             continue;
         }
@@ -47,9 +46,11 @@ std::vector<AST*> Preprocessor::preprocess() {
         // Process different node types
         if (auto* ifNode = dynamic_cast<IfWhileNode*>(node)) {
             processIfWhileNode(ifNode);
-            if (conditionalBlockActive) {
+            if (conditionalBlockActive && ifNode->prefix != '#')
                 optimizedNodes.push_back(node);
-            }
+            else
+                for (AST* body : ifNode->body)
+                    optimizedNodes.push_back(body);
         } else if (auto* binOpNode = dynamic_cast<BinOpNode*>(node)) {
             optimizeBinOpNode(binOpNode);
             optimizedNodes.push_back(node);
@@ -74,6 +75,8 @@ std::vector<AST*> Preprocessor::preprocess() {
 }
 
 void Preprocessor::processIfWhileNode(IfWhileNode* node) {
+    if (node->prefix == '#')
+        return;
     if (node->sign == TOKEN_IF) {
         // Evaluate #if condition
         if (node->condition) {

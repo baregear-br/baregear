@@ -96,11 +96,14 @@ struct ConditionNode : BinOpNode {
 struct IfWhileNode : AST {
     AST* condition;
     TOKEN_TYPE sign;
-    std::string prefix;
+    std::vector<AST*> body;
+    char prefix;
 
-    IfWhileNode(AST* c, TOKEN_TYPE s) : condition(std::move(c)), sign(std::move(s)) { }
-    IfWhileNode(AST* c, TOKEN_TYPE s, std::string p) :
-                    condition(std::move(c)), sign(std::move(s)), prefix(std::move(p)) { }
+    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s) :
+                                                condition(std::move(c)),
+                                                body(std::move(b)), sign(std::move(s)) { }
+    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s, char p) : body(std::move(b)),
+                  condition(std::move(c)), sign(std::move(s)), prefix(std::move(p)) { }
 };
 
 struct DefineNode : AST {

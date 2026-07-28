@@ -127,9 +127,8 @@ int main(int argc, char *argv[]) {
             int bracketPos = help.indexOf('[');
             std::cout << "Usage: baregear " << help.mid(bracketPos, firstNewline - bracketPos).toStdString() << std::endl;
             std::cout << help.mid(firstNewline + 1).toStdString();
-        } else {
+        } else
             std::cout << help.toStdString();
-        }
         return positionalArgs.isEmpty() ? 1 : 0;
     }
 
