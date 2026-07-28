@@ -186,11 +186,28 @@ std::string Transpiler::factor(AST* body) {
     else if (auto ifWhileNode = dynamic_cast<IfWhileNode*>(body)) {
         std::stringstream str;
         if (ifWhileNode->sign == TOKEN_IF) {
-            str << "if (" << factor(ifWhileNode->condition) << ") {";
+            str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+
+            for (AST* body : ifWhileNode->body)
+                factor(body);
+            str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELIF) {
-            str << " else if (" << factor(ifWhileNode->condition) << ") {";
+            str << " else if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+
+            for (AST* body : ifWhileNode->body)
+                factor(body);
+            str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELSE) {
-            str << " else {";
+            str << " else {" << std::endl;
+
+            for (AST* body : ifWhileNode->body)
+                factor(body);
+            str << "}" << std::endl;
+        } else if (ifWhileNode->sign == TOKEN_WHILE) {
+            str << "while (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+            for (AST* body : ifWhileNode->body)
+                factor(body);
+            str << "}" << std::endl;
         }
         return str.str();
     }

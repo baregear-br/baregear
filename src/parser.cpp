@@ -103,18 +103,21 @@ std::vector<AST*> Parser::statement() {
         idx++;
         nodes.push_back(new EndNode(TOKEN_END));
     } else if (current == TOKEN_IF) {
+        int prevIDX = idx;
         idx++;
         AST* condition = expr();
         if (MATCH(idx, TOKEN_COLON)) {
             idx++;
             std::vector<AST*> ifBody;
             int startCol = T(idx).col;
-            while (!isAtEnd() && T(idx).col > startCol) {
+            while (!isAtEnd() && T(idx).col > startCol)
                 ifBody.push_back(expr());
-            }
+            if (T(prevIDX).value[0] == '#')
+                nodes.push_back(new IfWhileNode(condition, TOKEN_IF, '#'));
             nodes.push_back(new IfWhileNode(condition, TOKEN_IF));
         }
     } else if (current == TOKEN_ELSE) {
+        int prevIDX = idx;
         if (MATCH(idx + 1, TOKEN_IF)) {
             idx++;
             AST* condition = expr();
@@ -125,6 +128,8 @@ std::vector<AST*> Parser::statement() {
                 while (!isAtEnd() && T(idx).col > startCol) {
                     elseIfBody.push_back(expr());
                 }
+                if (T(prevIDX).value[0] == '#')
+                    nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF, '#'));
                 nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
             }
         } else {
@@ -136,10 +141,13 @@ std::vector<AST*> Parser::statement() {
                 while (!isAtEnd() && T(idx).col > startCol) {
                     elseBody.push_back(expr());
                 }
+                if (T(prevIDX).value[0] == '#')
+                    nodes.push_back(new IfWhileNode(NULL, TOKEN_ELSE, '#'));
                 nodes.push_back(new IfWhileNode(nullptr, TOKEN_ELSE));
             }
         }
     } else if (current == TOKEN_ELIF) {
+        int prevIDX = idx;
         idx++;
         AST* condition = expr();
         if (MATCH(idx, TOKEN_COLON)) {
@@ -149,6 +157,8 @@ std::vector<AST*> Parser::statement() {
             while (!isAtEnd() && T(idx).col > startCol) {
                 elifBody.push_back(expr());
             }
+            if (T(prevIDX).value[0] == '#')
+                nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF, '#'));
             nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
         }
     } else if (current == TOKEN_RETURN) {
