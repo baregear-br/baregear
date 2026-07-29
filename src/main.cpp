@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
     Lexer lex = Lexer(sourceCode);
     Parser parser = Parser(lex.lex());
     Preprocessor pp = Preprocessor(parser.parse());
-    Transpiler trns = Transpiler(pp.preprocess());
+    CompilerMetadata meta;
+    Transpiler trns = Transpiler(pp.preprocess(&meta));
     std::cout << trns.transpile() << std::endl;
 
     return 0;

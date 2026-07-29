@@ -184,6 +184,9 @@ std::string Transpiler::factor(AST* body) {
         return "";  // No output needed for end markers
     }
     else if (auto ifWhileNode = dynamic_cast<IfWhileNode*>(body)) {
+        if (ifWhileNode->body.empty())
+            return "";
+
         std::stringstream str;
         if (ifWhileNode->sign == TOKEN_IF) {
             str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
