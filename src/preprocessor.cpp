@@ -58,8 +58,24 @@ std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
             // Define nodes for constants/macros - pass through to transpiler
             optimizedNodes.push_back(node);
         } else if (auto* featureNode = dynamic_cast<FeatureNode*>(node)) {
-            // Feature nodes control compiler behavior - keep them for transpiler
-            optimizedNodes.push_back(node);
+            if (featureNode->featureName == "gc")
+                meta->gc = featureNode->enabled;
+            else if (featureNode->featureName == "runtime")
+                meta->runtime = featureNode->enabled;
+            else if (featureNode->featureName == "mm")
+                meta->mem_mgr = featureNode->enabled;
+            else if (featureNode->featureName == "multithreading" ||
+                featureNode->featureName == "mthread")
+                meta->multithreading = featureNode->enabled;
+            else if (featureNode->featureName == "uiTK")
+                meta->uiToolkit = featureNode->enabled;
+            else if (featureNode->featureName == "framework")
+                meta->framework = featureNode->enabled;
+            else {
+                error("Unknown BuiltIn Compiler Feature",
+                    featureNode->row, featureNode->col);
+                exit(1);
+            }
         } else if (auto* inlineCodeNode = dynamic_cast<InlineCodeNode*>(node)) {
             // Inline code nodes pass through to transpiler
             optimizedNodes.push_back(node);

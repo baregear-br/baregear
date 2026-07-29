@@ -46,3 +46,13 @@ target_include_directories(baregear PRIVATE
         ${PULSE_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/include
 )
+
+if(BUILD_TESTING)
+    file(GLOB SAMPLE_FILES "${CMAKE_SOURCE_DIR}/sample/*.br")
+    foreach(SAMPLE_FILE ${SAMPLE_FILES})
+        get_filename_component(SAMPLE_NAME ${SAMPLE_FILE} NAME_WE)
+        add_test(NAME "sample_${SAMPLE_NAME}"
+            COMMAND baregear ${SAMPLE_FILE}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    endforeach()
+endif()
