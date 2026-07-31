@@ -46,9 +46,9 @@ std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
         // Process different node types
         if (auto* ifNode = dynamic_cast<IfWhileNode*>(node)) {
             processIfWhileNode(ifNode);
-            if (conditionalBlockActive && ifNode->prefix != '#')
+            if (ifNode->prefix != '#')
                 optimizedNodes.push_back(node);
-            else
+            else if (conditionalBlockActive)
                 for (AST* body : ifNode->body)
                     optimizedNodes.push_back(body);
         } else if (auto* binOpNode = dynamic_cast<BinOpNode*>(node)) {
@@ -91,25 +91,19 @@ std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
 }
 
 void Preprocessor::processIfWhileNode(IfWhileNode* node) {
-    if (node->prefix == '#')
+    if (node->prefix != '#')
         return;
     if (node->sign == TOKEN_IF) {
         // Evaluate #if condition
         if (node->condition) {
             AST* result = evaluateConstantExpression(node->condition);
-            if (result && isConstant(result)) {
-                inConditionalBlock = true;
-                conditionalBlockActive = true;
-            } else {
-                inConditionalBlock = true;
-                conditionalBlockActive = false;
-            }
+            inConditionalBlock = true;
+            conditionalBlockActive = result && isConstant(result);
         }
     } else if (node->sign == TOKEN_ELSE) {
-        // #else - activate if no previous block was active
-        if (inConditionalBlock && !conditionalBlockActive) {
-            conditionalBlockActive = true;
-        }
+        // #else - take the opposite state of the preceding #if block
+        if (inConditionalBlock)
+            conditionalBlockActive = !conditionalBlockActive;
     }
 }
 

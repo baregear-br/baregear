@@ -34,8 +34,7 @@ std::string Transpiler::transpile() {
     str << "#include <string.h>" << std::endl;
     str << std::endl;
     
-    // Process all AST nodes
-    for (AST* node : nodes)
+    for(AST* node : nodes)
         str << factor(node) << std::endl;
     
     return str.str();
@@ -100,6 +99,8 @@ std::string Transpiler::factor(AST* body) {
         }
         else if (auto bon = dynamic_cast<BinOpNode*>(asn->node))
             return asn->name + " = " + factor(bon) + ';';
+        else if (auto var = dynamic_cast<VariableNode*>(asn->node))
+            return asn->name + " = " + var->name + ';';
         else
             error("Illegal Value Used On " + asn->name, 0, 0);
     }
@@ -170,9 +171,7 @@ std::string Transpiler::factor(AST* body) {
         
         switch (inlineCodeNode->language) {
             case TOKEN_C:
-                return "extern \"C\" {\n" + code + "\n}\n";  // Direct C code output
-            case TOKEN_CPP:
-                return code;  // Direct C++ code output
+                return code;
             case TOKEN_ASM:
                 return "__asm__(\"" + code + "\")";  // Wrap assembly in GCC inline asm
             default:
@@ -184,33 +183,28 @@ std::string Transpiler::factor(AST* body) {
         return "";  // No output needed for end markers
     }
     else if (auto ifWhileNode = dynamic_cast<IfWhileNode*>(body)) {
-        if (ifWhileNode->body.empty())
-            return "";
-
         std::stringstream str;
         if (ifWhileNode->sign == TOKEN_IF) {
             str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
-
-            for (AST* body : ifWhileNode->body)
-                factor(body);
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELIF) {
             str << " else if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
-
-            for (AST* body : ifWhileNode->body)
-                factor(body);
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELSE) {
             str << " else {" << std::endl;
-
-            for (AST* body : ifWhileNode->body)
-                factor(body);
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_WHILE) {
             str << "while (" << factor(ifWhileNode->condition) << ") {" << std::endl;
-            for (AST* body : ifWhileNode->body)
-                factor(body);
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
             str << "}" << std::endl;
+            return str.str();
         }
         return str.str();
     }
