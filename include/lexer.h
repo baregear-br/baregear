@@ -79,12 +79,12 @@ enum TOKEN_TYPE {
     TOKEN_ERROR,
     TOKEN_WARNING,
     TOKEN_C,
-    TOKEN_CPP,
     TOKEN_ASM,
     TOKEN_FEATURE,
     TOKEN_NO_FEATURE,
     TOKEN_END,
-    TOKEN_RETURN
+    TOKEN_RETURN,
+    TOKEN_VAR
 };
 
 inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
@@ -118,13 +118,13 @@ inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
         { "catch",          TOKEN_CATCH },
         { "throw",          TOKEN_THROW },
         { "return",         TOKEN_RETURN },
+        { "var",            TOKEN_VAR },
         { "#if",            TOKEN_IF },
         { "#else",          TOKEN_ELSE },
         { "#define",        TOKEN_DEFINE },
         { "#error",         TOKEN_ERROR },
         { "#warning",       TOKEN_WARNING },
-        { "#c",             TOKEN_C },
-        { "#cpp",           TOKEN_CPP },
+        { "#clang",             TOKEN_C },
         { "#asm",           TOKEN_ASM },
         { "#feature",       TOKEN_FEATURE },
         { "#nofeature",     TOKEN_NO_FEATURE },
