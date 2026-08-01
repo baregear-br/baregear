@@ -156,6 +156,7 @@ struct ReturnNode : AST {
 class Parser {
 private:
     std::vector<TOKEN> tokens;
+    std::vector<Lexer> lexs;
     unsigned int idx = 0;
 
     AST* term();

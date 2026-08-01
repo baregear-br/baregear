@@ -86,7 +86,8 @@ std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
             optimizedNodes.push_back(node);
         }
     }
-    
+
+    nodes.clear();
     return optimizedNodes;
 }
 
