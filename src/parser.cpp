@@ -34,6 +34,8 @@ std::vector<AST*> Parser::parse() {
         auto stmts = statement();
         nodes.insert(nodes.end(), stmts.begin(), stmts.end());
     }
+    tokens.clear();
+    lexs.clear();
     return nodes;
 }
 

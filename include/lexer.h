@@ -124,7 +124,7 @@ inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
         { "#define",        TOKEN_DEFINE },
         { "#error",         TOKEN_ERROR },
         { "#warning",       TOKEN_WARNING },
-        { "#clang",             TOKEN_C },
+        { "#clang",         TOKEN_C },
         { "#asm",           TOKEN_ASM },
         { "#feature",       TOKEN_FEATURE },
         { "#nofeature",     TOKEN_NO_FEATURE },

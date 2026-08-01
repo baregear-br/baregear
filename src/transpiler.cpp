@@ -26,17 +26,14 @@
 std::map<std::string, DATATYPE> variableIndex;
 
 std::string Transpiler::transpile() {
-    std::stringstream str;
-    
-    // Output C header
-    str << "#include <stdio.h>" << std::endl;
-    str << "#include <stdlib.h>" << std::endl;
-    str << "#include <string.h>" << std::endl;
+    // Output CPP header
+    str << "#include <iostream>" << std::endl;
     str << std::endl;
     
     for(AST* node : nodes)
-        str << factor(node) << std::endl;
-    
+        sstr << factor(node) << std::endl;
+    str << sstr.str();
+    nodes.clear();
     return str.str();
 }
 
@@ -84,7 +81,9 @@ std::string Transpiler::factor(AST* body) {
             variableIndex.insert({var->name, var->datatype});
             return getCDataType(var->datatype) + ' ' + var->name + ';';
         }
-        return std::string(var->name);
+        if (variableIndex.contains(var->name))
+            if (variableIndex.find(var->name)->second == VARIANT)
+                return "std::get<>(" + var->name + ')';
     }
     else if (auto asn = dynamic_cast<AssignNode*>(body)) {
         if (!variableIndex.contains(asn->name))
@@ -156,18 +155,12 @@ std::string Transpiler::factor(AST* body) {
         // Define nodes for constants/macros - output as #define
         return "#define " + defineNode->name + " " + defineNode->value;
     }
-    else if (auto featureNode = dynamic_cast<FeatureNode*>(body)) {
-        // Feature nodes control compiler behavior - output as comments
-        std::string state = featureNode->enabled ? "enable" : "disable";
-        return "// Compiler feature: " + state + " " + featureNode->featureName;
-    }
     else if (auto inlineCodeNode = dynamic_cast<InlineCodeNode*>(body)) {
         // Inline code nodes - output directly based on language type
         std::string code = inlineCodeNode->code;
         // Remove trailing space if present
-        if (!code.empty() && code.back() == ' ') {
+        if (!code.empty() && code.back() == ' ')
             code.pop_back();
-        }
         
         switch (inlineCodeNode->language) {
             case TOKEN_C:
@@ -220,10 +213,10 @@ std::string Transpiler::factor(AST* body) {
 inline std::string Transpiler::getCDataType(DATATYPE dtype) {
     switch (dtype) {
         case STRING:
-            return "char*";
+            return "std::string";
 
         case NUMBER:
-            return "long";
+            return "std::variant<int, float, double, short, long>";
 
         case FLOAT:
             return "float";
@@ -232,9 +225,9 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
             return "double";
 
         case VARIANT:
-            return "var";
+            return "std::variant<std::string, int, float, double, short, long>";
 
         default:
-            return "long";
+            return "std::variant<std::string, int, float, double, short, long>";
     }
 }
