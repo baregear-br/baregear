@@ -51,7 +51,7 @@ struct AST {
 
 struct ValueNode : AST {
     std::string value;
-    ValueNode(std::string v, int r = 0, int c = 0) : AST(r, c), value(std::move(v)) {}
+    ValueNode(std::string v, int r = 1, int c = 1) : AST(r, c), value(std::move(v)) {}
 };
 
 struct BinOpNode : AST {
@@ -68,19 +68,19 @@ struct VariableNode : AST {
     DATATYPE datatype;
     bool isDecl;
 
-    VariableNode(std::string n, DATATYPE d, bool decl = false, int r = 0, int c = 0) : AST(r, c), name(std::move(n)), datatype(std::move(d)), isDecl(decl) { }
+    VariableNode(std::string n, DATATYPE d, bool decl = false, int r = 1, int c = 1) : AST(r, c), name(std::move(n)), datatype(std::move(d)), isDecl(decl) { }
 };
 
 struct CallNode : VariableNode {
     std::vector<AST*> param;
-    CallNode(std::string n, std::vector<AST*> p, int r = 0, int c = 0) :
+    CallNode(std::string n, std::vector<AST*> p, int r = 1, int c = 1) :
                                                            VariableNode(std::move(n), VARIANT, false, r, c),
                                                            param(std::move(p)) { }
 };
 
 struct FunctionNode : CallNode {
     std::vector<AST*> body;
-    FunctionNode(std::string n, std::vector<VariableNode*> p, std::vector<AST*> b, int r = 0, int c = 0) :
+    FunctionNode(std::string n, std::vector<VariableNode*> p, std::vector<AST*> b, int r = 1, int c = 1) :
                                                         CallNode(std::move(n), std::vector<AST*>(p.begin(), p.end()), r, c),
                                                         body(std::move(b)) { }
 };
@@ -89,7 +89,7 @@ struct AssignNode : AST {
     std::string name;
     AST* node;
 
-    AssignNode(std::string n, AST* v, int r = 0, int c = 0) : AST(r, c), name(std::move(n)), node(std::move(v)) { }
+    AssignNode(std::string n, AST* v, int r = 1, int c = 1) : AST(r, c), name(std::move(n)), node(std::move(v)) { }
 };
 
 struct ConditionNode : BinOpNode {
@@ -102,11 +102,11 @@ struct IfWhileNode : AST {
     std::vector<AST*> body;
     char prefix{};
 
-    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s, int r = 0, int col = 0) :
+    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s, int r = 1, int col = 0) :
                                                 AST(r, col),
                                                 condition(std::move(c)),
                                                 body(std::move(b)), sign(std::move(s)) { }
-    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s, char p, int r = 0, int col = 0) : AST(r, col), body(std::move(b)),
+    IfWhileNode(AST* c, std::vector<AST*> b, TOKEN_TYPE s, char p, int r = 1, int col = 0) : AST(r, col), body(std::move(b)),
                   condition(std::move(c)), sign(std::move(s)), prefix(std::move(p)) { }
 };
 
@@ -114,43 +114,59 @@ struct DefineNode : AST {
     std::string name;
     std::string value;
 
-    DefineNode(std::string n, std::string v, int r = 0, int c = 0) : AST(r, c), name(std::move(n)), value(std::move(v)) { }
+    DefineNode(std::string n, std::string v, int r = 1, int c = 1) : AST(r, c), name(std::move(n)), value(std::move(v)) { }
 };
 
 struct FeatureNode : AST {
     std::string featureName;
     bool enabled;
 
-    FeatureNode(std::string name, bool enable, int r = 0, int c = 0) : AST(r, c), featureName(std::move(name)), enabled(enable) { }
+    FeatureNode(std::string name, bool enable, int r = 1, int c = 1) : AST(r, c), featureName(std::move(name)), enabled(enable) { }
 };
 
 struct InlineCodeNode : AST {
     std::string code;
     TOKEN_TYPE language;
 
-    InlineCodeNode(std::string c, TOKEN_TYPE lang, int r = 0, int col = 0) : AST(r, col), code(std::move(c)), language(std::move(lang)) { }
+    InlineCodeNode(std::string c, TOKEN_TYPE lang, int r = 1, int col = 0) : AST(r, col), code(std::move(c)), language(std::move(lang)) { }
 };
 
 struct EndNode : AST {
     TOKEN_TYPE endType;
 
-    EndNode(TOKEN_TYPE type, int r = 0, int c = 0) : AST(r, c), endType(std::move(type)) { }
+    EndNode(TOKEN_TYPE type, int r = 1, int c = 1) : AST(r, c), endType(std::move(type)) { }
 };
 
 struct StructNode : AST {
     std::vector<ValueNode> structure;
-    StructNode(std::vector<ValueNode> Struct, int r = 0, int c = 0) : AST(r, c), structure(std::move(Struct)) { }
+    StructNode(std::vector<ValueNode> Struct, int r = 1, int c = 1) : AST(r, c), structure(std::move(Struct)) { }
 };
 
 struct ClassNode : AST {
     std::map<ValueNode, CLASS_NODE_TYPE> classStructure;
-    ClassNode(std::map<ValueNode, CLASS_NODE_TYPE> ClassStruct, int r = 0, int c = 0) :
+    ClassNode(std::map<ValueNode, CLASS_NODE_TYPE> ClassStruct, int r = 1, int c = 1) :
                              AST(r, c), classStructure(std::move(ClassStruct)) { }
 };
 
 struct ReturnNode : AST {
     VariableNode* node;
-    ReturnNode(VariableNode* n, int r = 0, int c = 0) : AST(r, c), node(std::move(n)) { }
+    ReturnNode(VariableNode* n, int r = 1, int c = 1) : AST(r, c), node(std::move(n)) { }
+};
+
+typedef enum {
+    IMPORTANCE_URGENT,
+    IMPORTANCE_HIGH,
+    IMPORTANCE_MEDIUM,
+    IMPORTANCE_LOW
+} STMTImportance;
+
+struct ImportanceNode : AST {
+    STMTImportance level;
+    std::vector<AST*> body;
+
+    ImportanceNode(std::vector<AST*> b, STMTImportance l, int r = 1, int c = 1) :
+                                                    body(std::move(b)),
+                                                    level(std::move(l)) {}
 };
 
 class Parser {
