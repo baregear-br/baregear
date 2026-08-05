@@ -57,26 +57,21 @@ std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
         } else if (auto* defineNode = dynamic_cast<DefineNode*>(node)) {
             // Define nodes for constants/macros - pass through to transpiler
             optimizedNodes.push_back(node);
-        } else if (auto* featureNode = dynamic_cast<FeatureNode*>(node)) {
-            if (featureNode->featureName == "gc")
-                meta->gc = featureNode->enabled;
-            else if (featureNode->featureName == "runtime")
-                meta->runtime = featureNode->enabled;
-            else if (featureNode->featureName == "mm")
-                meta->mem_mgr = featureNode->enabled;
-            else if (featureNode->featureName == "multithreading" ||
-                featureNode->featureName == "mthread")
-                meta->multithreading = featureNode->enabled;
-            else if (featureNode->featureName == "uiTK")
-                meta->uiToolkit = featureNode->enabled;
-            else if (featureNode->featureName == "framework")
-                meta->framework = featureNode->enabled;
-            else {
-                error("Unknown BuiltIn Compiler Feature",
-                    featureNode->row, featureNode->col);
-                exit(1);
+        } else if (auto* featureNode = dynamic_cast<FeatureNode*>(node))
+            if (meta->features.contains(featureNode->featureName)) {
+                if (meta->features.find(featureNode->featureName)->second.state != featureNode->enabled) {
+                    if (meta->features.contains(featureNode->featureName))
+                        warn(featureNode->enabled ? "Enabling Feature Again." : "Disabling Feature Again.",
+                                featureNode->row, featureNode->col);
+
+                    FeatureMetadata fmeta;
+                    fmeta.row = featureNode->row;
+                    fmeta.col = featureNode->col;
+                    fmeta.state = featureNode->enabled;
+                    meta->features.insert({ featureNode->featureName, fmeta });
+                }
             }
-        } else if (auto* inlineCodeNode = dynamic_cast<InlineCodeNode*>(node)) {
+        else if (auto* inlineCodeNode = dynamic_cast<InlineCodeNode*>(node)) {
             // Inline code nodes pass through to transpiler
             optimizedNodes.push_back(node);
         } else if (auto* endNode = dynamic_cast<EndNode*>(node)) {

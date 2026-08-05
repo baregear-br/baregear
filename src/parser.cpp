@@ -17,6 +17,8 @@
  */
 
 #include <cstring>
+#include <cctype>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <variant>
@@ -58,9 +60,9 @@ std::vector<AST*> Parser::statement() {
             idx++;
         }
         // Remove trailing space if present
-        if (!defineValue.empty() && defineValue.back() == ' ') {
+        if (!defineValue.empty() && defineValue.back() == ' ')
             defineValue.pop_back();
-        }
+
         nodes.push_back(new DefineNode(defineName, defineValue, startRow, startCol));
     } else if (current == TOKEN_FEATURE) {
         int featRow = T(idx).row, featCol = T(idx).col;
@@ -198,9 +200,8 @@ std::vector<AST*> Parser::statement() {
                 nodes.push_back(new IfWhileNode(condition, elifBody, TOKEN_ELIF, '#', elifRow, elifCol));
             else
                 nodes.push_back(new IfWhileNode(condition, elifBody, TOKEN_ELIF, elifRow, elifCol));
-        } else {
+        } else
             error("Expected ':' after elif condition", elifRow, elifCol);
-        }
     } else if (current == TOKEN_WHILE) {
         int whileRow = T(idx).row, whileCol = T(idx).col;
         idx++;
@@ -212,9 +213,8 @@ std::vector<AST*> Parser::statement() {
                 if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
                     for (AST* s : statement())
                         whileBody.push_back(s);
-                } else {
+                } else
                     whileBody.push_back(expr());
-                }
             }
             nodes.push_back(new IfWhileNode(condition, whileBody, TOKEN_WHILE, whileRow, whileCol));
         } else {
@@ -227,11 +227,10 @@ std::vector<AST*> Parser::statement() {
         VariableNode* returnVar = dynamic_cast<VariableNode*>(returnValue);
         if (!returnVar) {
             // If expr() didn't return a VariableNode, create one from the value
-            if (auto* valNode = dynamic_cast<ValueNode*>(returnValue)) {
+            if (auto* valNode = dynamic_cast<ValueNode*>(returnValue))
                 returnVar = new VariableNode(valNode->value, VARIANT, false, retRow, retCol);
-            } else {
+            else
                 returnVar = new VariableNode("", VARIANT, false, retRow, retCol);
-            }
         }
         nodes.push_back(new ReturnNode(returnVar, retRow, retCol));
         return nodes;
@@ -270,11 +269,9 @@ std::vector<AST*> Parser::statement() {
                         next == TOKEN_SHORTER_EQUAL || next == TOKEN_AND ||
                         next == TOKEN_OR || next == TOKEN_XOR) {
                         nodes.push_back(expr());
-                    } else {
-                        for (const auto& varName : varNames) {
+                    } else
+                        for (const auto& varName : varNames)
                             nodes.push_back(new VariableNode(varName, VARIANT, true, T(saveIdx).row, T(saveIdx).col));
-                        }
-                    }
                     break;
                 }
             } else {
@@ -293,6 +290,31 @@ std::vector<AST*> Parser::statement() {
                 nodes.push_back(new AssignNode(varName, value, T(saveIdx).row, T(saveIdx).col));
             }
         }
+    } else if (current == TOKEN_IMPORTANCE) {
+        const int prevIdx = idx;
+        idx++;
+        std::string lowercase = T(idx).value;
+        std::transform(lowercase.begin(), lowercase.end(), lowercase.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        STMTImportance stmti;
+        if (lowercase == "low")
+            stmti = IMPORTANCE_LOW;
+        else if (lowercase == "medium")
+            stmti = IMPORTANCE_MEDIUM;
+        else if (lowercase == "high")
+            stmti = IMPORTANCE_HIGH;
+        else if (lowercase == "urgent")
+            stmti = IMPORTANCE_URGENT;
+        else {
+            error(lowercase + " is not supported importance level", T(idx).row, T(idx).col);
+            return nodes;
+        }
+        idx++;
+        std::vector<AST*> body;
+        while (T(idx).col > T(prevIdx + 1).col && !isAtEnd())
+            body.push_back(expr());
+
+        nodes.push_back(new ImportanceNode(body, stmti, T(idx).row, T(idx).col));
     } else {
         if (!isAtEnd())
             nodes.push_back(expr());
@@ -400,9 +422,8 @@ AST* Parser::factor() {
             // Parse function body (until end of line or same column)
             std::vector<AST*> body;
             int startCol = T(idx).col;
-            while (!isAtEnd() && T(idx).col > startCol) {
+            while (!isAtEnd() && T(idx).col > startCol)
                 body.push_back(expr());
-            }
 
             // Empty parameter list for function definition
             std::vector<VariableNode*> argNodes;

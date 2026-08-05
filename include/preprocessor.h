@@ -22,9 +22,13 @@
 #include <lexer.h>
 #include <parser.h>
 
+struct FeatureMetadata {
+    int row = 1, col = 1;
+    bool state;
+};
+
 struct CompilerMetadata {
-    bool gc = true, runtime = true, mem_mgr = true, multithreading = true,
-         framework = false, uiToolkit = false;
+    std::map<std::string, FeatureMetadata> features;
 };
 
 class Preprocessor {
