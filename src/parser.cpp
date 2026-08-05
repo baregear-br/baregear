@@ -34,8 +34,7 @@ std::vector<AST*> Parser::parse() {
         auto stmts = statement();
         nodes.insert(nodes.end(), stmts.begin(), stmts.end());
     }
-    tokens.clear();
-    lexs.clear();
+    Parser::~Parser();
     return nodes;
 }
 
@@ -235,49 +234,103 @@ std::vector<AST*> Parser::statement() {
         }
         nodes.push_back(new ReturnNode(returnVar, retRow, retCol));
         return nodes;
-    } else if (current == TOKEN_VAR) {
+    } else if (current == TOKEN_VAR || current == TOKEN_INT || current == TOKEN_FLOAT ||
+               current == TOKEN_DOUBLE || current == TOKEN_SHORT || current == TOKEN_NUMB ||
+               current == TOKEN_TEXT) {
+        DATATYPE dtype;
+        switch (current) {
+            case TOKEN_INT:    dtype = INT;    break;
+            case TOKEN_FLOAT:  dtype = FLOAT;  break;
+            case TOKEN_DOUBLE: dtype = DOUBLE; break;
+            case TOKEN_SHORT:  dtype = SHORT;  break;
+            case TOKEN_NUMB:   dtype = NUMBER; break;
+            case TOKEN_TEXT:   dtype = STRING; break;
+            default:           dtype = VARIANT; break;
+        }
+        int declRow = T(idx).row, declCol = T(idx).col;
         idx++;
+        std::vector<std::string> names;
         while (!isAtEnd() && TT(idx) == TOKEN_IDENTIFIER) {
-            nodes.push_back(new VariableNode(T(idx).value, VARIANT, true, T(idx).row, T(idx).col));
+            names.push_back(T(idx).value);
             idx++;
-            if (MATCH(idx, TOKEN_COMMA)) {
+            if (!isAtEnd() && MATCH(idx, TOKEN_COMMA)) {
                 idx++;
                 continue;
             }
             break;
+        }
+        if (!names.empty() && !isAtEnd() && MATCH(idx, TOKEN_COLON) && idx + 1 < tokens.size()) {
+            switch (TT(idx + 1)) {
+                case TOKEN_INT:    dtype = INT;    break;
+                case TOKEN_FLOAT:  dtype = FLOAT;  break;
+                case TOKEN_DOUBLE: dtype = DOUBLE; break;
+                case TOKEN_SHORT:  dtype = SHORT;  break;
+                case TOKEN_NUMB:   dtype = NUMBER; break;
+                case TOKEN_TEXT:   dtype = STRING; break;
+                default: break;
+            }
+            idx += 2;
+        }
+        for (const auto& name : names)
+            nodes.push_back(new VariableNode(name, dtype, true, declRow, declCol));
+        if (!names.empty() && !isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
+            idx++;
+            AST* value = expr();
+            for (const auto& name : names)
+                nodes.push_back(new AssignNode(name, value, declRow, declCol));
         }
     } else if (current == TOKEN_IDENTIFIER) {
         std::vector<std::string> varNames;
         int saveIdx = idx;
 
         while (true) {
-            if (TT(idx) == TOKEN_IDENTIFIER) {
+            if (!isAtEnd() && TT(idx) == TOKEN_IDENTIFIER) {
                 varNames.push_back(T(idx).value);
                 idx++;
-                if (MATCH(idx, TOKEN_COMMA)) {
+                if (!isAtEnd() && MATCH(idx, TOKEN_COMMA)) {
                     idx++;
                     continue;
-                } else if (MATCH(idx, TOKEN_ASSIGNMENT)) {
+                } else if (!isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
                     idx++;
                     break;
                 } else {
-                    idx = saveIdx;
-                    TOKEN_TYPE next = TT(idx + 1);
+                    TOKEN_TYPE next = isAtEnd() ? TOKEN_SEMICOLON : TT(idx);
                     if (next == TOKEN_STRING || next == TOKEN_NUMBER ||
                         next == TOKEN_IDENTIFIER || next == TOKEN_LPAREN ||
                         next == TOKEN_EQUAL || next == TOKEN_GREATER ||
                         next == TOKEN_SHORTER || next == TOKEN_GREATER_EQUAL ||
                         next == TOKEN_SHORTER_EQUAL || next == TOKEN_AND ||
                         next == TOKEN_OR || next == TOKEN_XOR) {
+                        idx = saveIdx;
                         nodes.push_back(expr());
                     } else {
-                        for (const auto& varName : varNames) {
-                            nodes.push_back(new VariableNode(varName, VARIANT, true, T(saveIdx).row, T(saveIdx).col));
+                        DATATYPE dtype = VARIANT;
+                        if (next == TOKEN_COLON && idx + 1 < tokens.size()) {
+                            switch (TT(idx + 1)) {
+                                case TOKEN_INT:    dtype = INT;    break;
+                                case TOKEN_FLOAT:  dtype = FLOAT;  break;
+                                case TOKEN_DOUBLE: dtype = DOUBLE; break;
+                                case TOKEN_SHORT:  dtype = SHORT;  break;
+                                case TOKEN_NUMB:   dtype = NUMBER; break;
+                                case TOKEN_TEXT:   dtype = STRING; break;
+                                default: break;
+                            }
+                            idx += 2;
+                        }
+                        for (const auto& varName : varNames)
+                            nodes.push_back(new VariableNode(varName, dtype, true, T(saveIdx).row, T(saveIdx).col));
+                        if (!isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
+                            idx++;
+                            AST* value = expr();
+                            for (const auto& varName : varNames)
+                                nodes.push_back(new AssignNode(varName, value, T(saveIdx).row, T(saveIdx).col));
                         }
                     }
                     break;
                 }
             } else {
+                if (isAtEnd())
+                    break;
                 idx = saveIdx;
                 nodes.push_back(expr());
                 break;
@@ -285,13 +338,11 @@ std::vector<AST*> Parser::statement() {
         }
 
         if (!varNames.empty() && idx > 0 && TT(idx - 1) == TOKEN_ASSIGNMENT) {
-            for (const auto& varName : varNames) {
+            for (const auto& varName : varNames)
                 nodes.push_back(new VariableNode(varName, VARIANT, true, T(saveIdx).row, T(saveIdx).col));
-            }
             AST* value = expr();
-            for (const auto& varName : varNames) {
+            for (const auto& varName : varNames)
                 nodes.push_back(new AssignNode(varName, value, T(saveIdx).row, T(saveIdx).col));
-            }
         }
     } else {
         if (!isAtEnd())
@@ -450,4 +501,5 @@ AST* Parser::factor() {
 Parser::~Parser() {
     idx = 0;
     tokens.clear();
+    lexs.clear();
 }
