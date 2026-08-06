@@ -47,14 +47,6 @@ target_include_directories(baregear PRIVATE
         ${CMAKE_SOURCE_DIR}/include
 )
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(baregear PRIVATE -O0 -fno-eliminate-unused-debug-types)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-    target_compile_options(baregear PRIVATE -O0 -fno-limit-debug-info -fstandalone-debug)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(baregear PRIVATE /Od /Oy-)
-endif()
-
 if(BUILD_TESTING)
     file(GLOB SAMPLE_FILES "${CMAKE_SOURCE_DIR}/sample/*.br")
     foreach(SAMPLE_FILE ${SAMPLE_FILES})
