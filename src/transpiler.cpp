@@ -78,8 +78,11 @@ std::string Transpiler::factor(AST* body) {
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
         if (var->isDecl) {
-            variableIndex.insert({var->name, var->datatype});
-            return getCDataType(var->datatype) + ' ' + var->name + ';';
+            if (!variableIndex.contains(var->name)) {
+                variableIndex.insert({var->name, var->datatype});
+                return getCDataType(var->datatype) + ' ' + var->name + ';';
+            }
+            return "";
         }
         if (variableIndex.contains(var->name))
             if (variableIndex.find(var->name)->second == VARIANT)
@@ -88,11 +91,11 @@ std::string Transpiler::factor(AST* body) {
     else if (auto asn = dynamic_cast<AssignNode*>(body)) {
         if (!variableIndex.contains(asn->name))
             variableIndex.insert({asn->name, VARIANT});
-        else if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
+        if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
             try {
                 std::stol(val->value);
                 return asn->name + " = " + val->value + ';';
-            } catch (std::runtime_error _) {
+            } catch (const std::exception&) {
                 return asn->name + " = \"" + val->value + "\";";
             }
         }
@@ -202,9 +205,8 @@ std::string Transpiler::factor(AST* body) {
         return str.str();
     }
     else if (auto returnNode = dynamic_cast<ReturnNode*>(body)) {
-        if (returnNode->node) {
+        if (returnNode->node)
             return "return " + factor(returnNode->node) + ";";
-        }
         return "return;";
     }
     return "";
@@ -214,6 +216,12 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
     switch (dtype) {
         case STRING:
             return "std::string";
+
+        case INT:
+            return "int";
+
+        case SHORT:
+            return "short";
 
         case NUMBER:
             return "std::variant<int, float, double, short, long>";
