@@ -5,6 +5,16 @@ baregear allows the dynamic typing
 but you can limit to use the datatype
 of variable.
 
+Syntax
+------
+
+.. code-block:: baregear
+
+    [datatypes], [more datatypes] [variableName]
+
+Example
+-------
+
 Simple Calculator Has Bug If User Typed The Text
 When User Enter Text Instead Of Number:
 
@@ -50,7 +60,7 @@ List Of Datatypes:
 - `float`: Used to store the decimal Numbers
 - `int`: Used To Store Only Non decimal number
 
-And Guess The Number Game Make To Easier To Gess:
+And Guess The Number Game Make To Easier To Gess By User:
 
 .. code-block:: baregear
 

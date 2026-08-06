@@ -1,15 +1,51 @@
 If/Else Operation
 =================
 
+Syntax
+------
+If Else Operation Syntax:
+
+.. code-block:: baregear
+
+    [if/else/else if/elif] <condition>:
+        [body]
+
+Example
+-------
+
 If/Else Operation Is Used For Implement
 The Logic Of Code To Work Properly For
-Example: You Have 20 Dollar And Buy
-Biscuit If Biscuit Price Shorter Or
-Equal To You Buy, Otherwise You Return
-To Your Home, Let's Understand By Creating
-Project
+Example: You Have 0.081 Dollar If
+Biscuit Price Shorter Or Equal To
+You Buy, Otherwise You Return To Your Home,
+Let's Understand By Creating Project
+
+.. code-block:: baregear
+
+    money = 0.081
+    if money >= input "Enter The Biscuit Value":
+        print "I Bought Biscuit"
+    else
+        print "I Come Back To Home"
+
+Result If Equals Or Shorter:
+
+.. code-block:: baregear
+
+    Enter The Biscuit Value: 0.081
+    I Bought Biscuit
+
+Result Is Not Equals:
+
+.. code-block:: baregear
+
+    Enter The Biscuit Value: 0.16
+    I Come Back To Home
+
+Lets Create Project
 
 1. Simple Calculator:
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: baregear
 
@@ -68,6 +104,7 @@ If User Do Mistake:
     Result: 24.5
 
 2. Guess The Number Game
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: baregear
 

@@ -1,6 +1,25 @@
 Function Declaration And Using Response Sequence
 ================================================
 
+Syntax
+------
+
+Declaring Function Syntax:
+
+.. code-block:: baregear
+
+    [functionName] [parameter]:
+        [body]
+
+Calling Function Syntax:
+
+.. code-block:: baregear
+
+    [functionName] [parameter]
+
+Example
+-------
+
 Declaring Simple Function
 --------------------------
 

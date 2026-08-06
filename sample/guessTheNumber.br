@@ -1,0 +1,16 @@
+attempts = 0
+number = random 1 to 100
+print "Guess The Number From 1 to 100 But You Can Provide Number Upto 5 Times"
+
+while attempts < 5:
+    userInput = input "Enter Your Number: ".
+    if userInput > number:
+        print "Your Number Greater Then My Number."
+    else if userInput < number:
+        print "Your Number Shorter Then My Number."
+    else:
+        print "Matched."
+        exit 0
+    attempts += 1
+
+print "You Cannot Guess Valid Number."

@@ -1,0 +1,19 @@
+SayHello:
+    print "Hello World!"
+
+SayHello
+
+Square x:
+    return x * x
+
+print Square 2       # Output 4
+
+Square x as numb, y as numb - optional:
+    if isAvailable y:
+        result = x
+        for _ in range y:
+            result * x
+    return x * x
+
+print Square 2       # Output 4
+print Square 2, 4    # Output 8
