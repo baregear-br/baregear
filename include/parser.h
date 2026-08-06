@@ -36,7 +36,6 @@ enum DATATYPE {
     INT,
     FLOAT,
     DOUBLE,
-    SHORT,
     NUMBER,
     STRING,
     LIST,
