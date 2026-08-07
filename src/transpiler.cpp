@@ -41,9 +41,12 @@ std::string Transpiler::factor(AST* body) {
     if (auto fn = dynamic_cast<FunctionNode*>(body)) {
         std::stringstream str;
         str << "void " << fn->name << "(";
-        for (AST* param : fn->param) {
-            if (auto varParam = dynamic_cast<VariableNode*>(param))
-                str << getCDataType(varParam->datatype) << varParam->name;
+        for (size_t i = 0; i < fn->param.size(); i++) {
+            if (auto varParam = dynamic_cast<VariableNode*>(fn->param[i])) {
+                if (i > 0) str << ", ";
+                str << getCDataType(varParam->datatype) << ' ' << varParam->name;
+                variableIndex.insert({varParam->name, varParam->datatype});
+            }
         }
 
         str << ") {" << std::endl;

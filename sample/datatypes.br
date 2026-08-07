@@ -1,5 +1,0 @@
-numb x = input "Enter Your First Number: "
-op = input "Enter Your Operator To Calculate: "
-numb y = input "Enter Your Second Number: "
-
-# Next Code Remains Same

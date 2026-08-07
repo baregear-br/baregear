@@ -113,6 +113,9 @@ int main(int argc, char *argv[]) {
     QCommandLineOption modeOption("mode", "Compilation Mode", "mode");
     qparser.addOption(modeOption);
 
+    QCommandLineOption defineOption(QStringList{"d", "define"}, "Define a macro (NAME or NAME=VALUE).", "define");
+    qparser.addOption(defineOption);
+
     qparser.addPositionalArgument("source", "Source file to compile.", "source");
 
     qparser.process(app);
@@ -152,9 +155,20 @@ int main(int argc, char *argv[]) {
         sourceLines.push_back(line);
 
     Lexer lex = Lexer(sourceCode);
-    Parser parser = Parser(lex.lex());
-    Preprocessor pp = Preprocessor(parser.parse());
+    std::vector<TOKEN> toks = lex.lex();
+    Parser parser = Parser(toks);
+    std::vector<AST*> ast = parser.parse();
+    Preprocessor pp = Preprocessor(ast);
     CompilerMetadata meta;
+    const QStringList defines = qparser.values(defineOption);
+    for (const QString& def : defines) {
+        std::string d = def.toStdString();
+        size_t eq = d.find('=');
+        if (eq != std::string::npos)
+            meta.defines[d.substr(0, eq)] = d.substr(eq + 1);
+        else
+            meta.defines[d] = "";
+    }
     Transpiler trns = Transpiler(pp.preprocess(&meta));
     std::cout << trns.transpile() << std::endl;
 
