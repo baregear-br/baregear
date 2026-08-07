@@ -150,8 +150,8 @@ struct ClassNode : AST {
 };
 
 struct ReturnNode : AST {
-    VariableNode* node;
-    ReturnNode(VariableNode* n, int r = 1, int c = 1) : AST(r, c), node(std::move(n)) { }
+    AST* node;
+    ReturnNode(AST* n, int r = 1, int c = 1) : AST(r, c), node(std::move(n)) { }
 };
 
 typedef enum {
@@ -180,13 +180,14 @@ private:
     AST* expr();
     AST* factor();
     std::vector<AST*> statement();
+    std::vector<AST*> parseBody(unsigned int baseCol);
+    bool isFunctionDefinition();
     inline bool isAtEnd() {
         return idx >= tokens.size();
     }
 public:
     Parser(std::vector<TOKEN> t) : tokens(std::move(t)) { }
     std::vector<AST*> parse();
-    ~Parser();
 };
 
 #endif // PARSER_H

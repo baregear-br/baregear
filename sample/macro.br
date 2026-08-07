@@ -1,5 +1,5 @@
 osName:
-#ifdef defined WINDOWS
+#if defined WINDOWS
     print "Windows"
 #else if defined MAC_OS
     print "MacOS"

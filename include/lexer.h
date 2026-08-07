@@ -76,6 +76,7 @@ enum TOKEN_TYPE {
     TOKEN_THROW,
     TOKEN_TEXT,
     TOKEN_DEFINE,
+    TOKEN_DEFINED,
     TOKEN_IMPORTANCE,
     TOKEN_ERROR,
     TOKEN_WARNING,
@@ -122,7 +123,9 @@ inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
         { "var",            TOKEN_VAR },
         { "#if",            TOKEN_IF },
         { "#else",          TOKEN_ELSE },
+        { "#elif",          TOKEN_ELIF },
         { "#define",        TOKEN_DEFINE },
+        { "defined",        TOKEN_DEFINED },
         { "#importance",    TOKEN_IMPORTANCE },
         { "#error",         TOKEN_ERROR },
         { "#warning",       TOKEN_WARNING },
@@ -150,7 +153,6 @@ private:
 public:
     Lexer(std::string c) : code(c) { }
     std::vector<TOKEN> lex();
-    ~Lexer();
 };
 
 #endif // LEXER_H
