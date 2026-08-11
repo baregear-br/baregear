@@ -110,3 +110,44 @@ List Of Compiler Features:
 4. `mm`: High-level Memory Manager Note: Garbage Collector Disabled If Memory Manager Is Disabled
 
 - Note: All Compiler Built-in features support the bare-metal implementation of code
+
+Setting Importance Flag
+-----------------------
+
+Syntax:
+
+.. code-block:: baregear
+    #importance <importanceLevel>
+        [code]
+
+Importance Flag Is Used To Set Importance Of Function Execution And
+It Helps To Find The Exact Location Of 'No Required Code Execution'
+Bug For Example: If Code Is Not Executing In The Emulator
+But That Code Is Flagged As Important To Compiler Throw The Error
+Prints Like 'Code Not Executing But Flagged As Important.'.
+
+.. code-block:: baregear
+
+    WORKS = 0
+    if WORKS == 1:
+        #importance high
+            print "Working"
+    else:
+        print "Not Working"
+
+Error Prints Like:
+
+.. code-block:: baregear
+
+    importance.br:3:4
+    WORKS = 0
+    if WORKS = 1:
+        #importance high
+        ^
+        Code Not Executing But Flagged As Important.
+
+Importance Level:
+`low`: The Code Must Be Executed Minimum 1 Times
+`medium`:  The Code Must Be Executed Sometimes
+`high`: The Code Must Be Executed Properly
+`urgent`: The Code Must Be Executed Always

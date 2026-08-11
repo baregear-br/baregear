@@ -1,6 +1,6 @@
-x = input "Enter Your First Number: "
-op = input "Enter Your Operator To Calculate: "
-y = input "Enter Your Second Number: "
+numb x = input "Enter Your First Number: "
+text op = input "Enter Your Operator To Calculate: "
+numb y = input "Enter Your Second Number: "
 
 switch op:
     case '+':
@@ -16,4 +16,4 @@ switch op:
         print 'Result: ' + (x / y)
 
     default:
-        print 'Invalid Operator: '
+        print 'Invalid Operator: ' + op

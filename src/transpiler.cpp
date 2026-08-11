@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <set>
 #include <parser.h>
 #include <transpiler.h>
 #include <definations.h>
@@ -27,14 +28,40 @@ std::map<std::string, DATATYPE> variableIndex;
 
 std::string Transpiler::transpile() {
     // Output CPP header
-    str << "#include <iostream>" << std::endl;
-    str << std::endl;
-    
-    for(AST* node : nodes)
-        sstr << factor(node) << std::endl;
-    str << sstr.str();
+    hstr << "#include <iostream>" << std::endl;
+    sstr << std::endl;
+
+    std::stringstream mainStmts;
+    for (AST* node : nodes) {
+        if (dynamic_cast<FunctionNode*>(node) ||
+            dynamic_cast<DefineNode*>(node) ||
+            dynamic_cast<InlineCodeNode*>(node))
+            sstr << factor(node) << std::endl;
+        else
+            mainStmts << "    " << statement(node) << std::endl;
+    }
+    hstr << sstr.str();
+    hstr << str.str();
+    hstr << "int main() {" << std::endl;
+    hstr << mainStmts.str();
+    hstr << "    return 0;" << std::endl;
+    hstr << "}" << std::endl;
     nodes.clear();
-    return str.str();
+    return hstr.str();
+}
+
+std::string Transpiler::statement(AST* node) {
+    std::string s = factor(node);
+    if (dynamic_cast<CallNode*>(node) ||
+        dynamic_cast<BinOpNode*>(node) ||
+        dynamic_cast<ValueNode*>(node)) {
+        return s + ';';
+    }
+    if (auto var = dynamic_cast<VariableNode*>(node)) {
+        if (!var->isDecl)
+            return s + ';';
+    }
+    return s;
 }
 
 std::string Transpiler::factor(AST* body) {
@@ -51,7 +78,7 @@ std::string Transpiler::factor(AST* body) {
 
         str << ") {" << std::endl;
         for (AST* body : fn->body)
-            str << factor(body) << std::endl;
+            str << statement(body) << std::endl;
 
         str << "}" << std::endl;
         return str.str();
@@ -63,7 +90,7 @@ std::string Transpiler::factor(AST* body) {
             if (i > 0) str << ", ";
             str << factor(call->param[i]);
         }
-        str << ");";
+        str << ")";
         return str.str();
     }
     else if (auto val = dynamic_cast<ValueNode*>(body)) {
@@ -88,8 +115,10 @@ std::string Transpiler::factor(AST* body) {
             return "";
         }
         if (variableIndex.contains(var->name))
-            if (variableIndex.find(var->name)->second == VARIANT)
-                return "std::get<>(" + var->name + ')';
+            return variableIndex.find(var->name)->second == VARIANT
+                       ? "std::get<>(" + var->name + ')'
+                       : var->name;
+        return var->name;
     }
     else if (auto asn = dynamic_cast<AssignNode*>(body)) {
         if (!variableIndex.contains(asn->name))
@@ -104,6 +133,8 @@ std::string Transpiler::factor(AST* body) {
         }
         else if (auto bon = dynamic_cast<BinOpNode*>(asn->node))
             return asn->name + " = " + factor(bon) + ';';
+        else if (auto call = dynamic_cast<CallNode*>(asn->node))
+            return asn->name + " = " + factor(call);
         else if (auto var = dynamic_cast<VariableNode*>(asn->node))
             return asn->name + " = " + var->name + ';';
         else
@@ -169,10 +200,57 @@ std::string Transpiler::factor(AST* body) {
             code.pop_back();
         
         switch (inlineCodeNode->language) {
-            case TOKEN_C:
-                return code;
-            case TOKEN_ASM:
-                return "__asm__(\"" + code + "\")";  // Wrap assembly in GCC inline asm
+            case TOKEN_C: {
+                // Substitute references to baregear variables inside the inline
+                // C++ code with their C++ access form (mirrors the Clang AST
+                // "uses minus declarations" analysis):
+                //   - variant-typed variables are accessed via std::get<>(name)
+                //   - concrete-typed variables keep their plain name
+                // Names that the inline code itself declares (preceded by a C++
+                // type keyword) are subtracted and left untouched.
+                static const std::set<std::string> cppTypes = {
+                    "int", "float", "double", "short", "long", "string",
+                    "auto", "char", "bool", "unsigned", "const", "std::string"
+                };
+                std::vector<std::string> toks;
+                std::istringstream iss(code);
+                std::string tok;
+                while (iss >> tok)
+                    toks.push_back(tok);
+                std::stringstream out;
+                for (size_t i = 0; i < toks.size(); i++) {
+                    if (i > 0) out << ' ';
+                    std::string word = toks[i];
+                    auto it = variableIndex.find(word);
+                    if (it != variableIndex.end()) {
+                        bool isDecl = i > 0 && cppTypes.contains(toks[i - 1]);
+                        if (!isDecl && it->second == VARIANT)
+                            out << "std::get<>(" << word << ')';
+                        else
+                            out << word;
+                    } else {
+                        out << word;
+                    }
+                }
+                return out.str();
+            }
+            case TOKEN_ASM: {
+                // Escape double quotes and backslashes so assembly survives the
+                // C++ string literal untouched
+                std::string escaped;
+                for (char ch : code) {
+                    if (ch == '"') {
+                        escaped += "\\\"";
+                    } else if (ch == '\\') {
+                        escaped += "\\\\";
+                    } else {
+                        escaped += ch;
+                    }
+                }
+                // LLVM/Clang-compatible basic asm: `volatile` prevents the optimizer
+                // from deleting or reordering the statement
+                return "__asm__ volatile(\"" + escaped + "\")";
+            }
             default:
                 return code;
         }
@@ -186,22 +264,22 @@ std::string Transpiler::factor(AST* body) {
         if (ifWhileNode->sign == TOKEN_IF) {
             str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
             for(AST* stmt : ifWhileNode->body)
-                str << "    " << factor(stmt) << std::endl;
+                str << "    " << statement(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELIF) {
             str << " else if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
             for(AST* stmt : ifWhileNode->body)
-                str << "    " << factor(stmt) << std::endl;
+                str << "    " << statement(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELSE) {
             str << " else {" << std::endl;
             for(AST* stmt : ifWhileNode->body)
-                str << "    " << factor(stmt) << std::endl;
+                str << "    " << statement(stmt) << std::endl;
             str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_WHILE) {
             str << "while (" << factor(ifWhileNode->condition) << ") {" << std::endl;
             for(AST* stmt : ifWhileNode->body)
-                str << "    " << factor(stmt) << std::endl;
+                str << "    " << statement(stmt) << std::endl;
             str << "}" << std::endl;
             return str.str();
         }
@@ -211,6 +289,23 @@ std::string Transpiler::factor(AST* body) {
         if (returnNode->node)
             return "return " + factor(returnNode->node) + ";";
         return "return;";
+    }
+    else if (auto switchNode = dynamic_cast<SwitchNode*>(body)) {
+        std::stringstream str;
+        str << "switch (" << factor(switchNode->condition) << ") {" << std::endl;
+        for (AST* c : switchNode->cases) {
+            if (auto caseNode = dynamic_cast<CaseNode*>(c)) {
+                if (caseNode->isDefault)
+                    str << "default:" << std::endl;
+                else
+                    str << "case " << factor(caseNode->value) << ":" << std::endl;
+                for (AST* stmt : caseNode->body)
+                    str << "    " << statement(stmt) << std::endl;
+                str << "    break;" << std::endl;
+            }
+        }
+        str << "}" << std::endl;
+        return str.str();
     }
     return "";
 }
@@ -227,6 +322,11 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
             return "short";
 
         case NUMBER:
+            if (!isVarDTYPEUsed) {
+                hstr << "#include <variant>";
+                isVarDTYPEUsed = true;
+            }
+
             return "std::variant<int, float, double, short, long>";
 
         case FLOAT:
@@ -236,6 +336,11 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
             return "double";
 
         case VARIANT:
+            if (!isVarDTYPEUsed) {
+                hstr << "#include <variant>" << std::endl;
+                isVarDTYPEUsed = true;
+            }
+
             return "std::variant<std::string, int, float, double, short, long>";
 
         default:

@@ -67,7 +67,7 @@ Lets Create Project
             print 'Result: ' + (x / y)
 
         default:
-            print 'Invalid Operator: '
+            print 'Invalid Operator: ' + op
 
 But You Won't Implement The if, else for fixing the
 problem of Divide By Zero Or Any Compiler Handle It,
