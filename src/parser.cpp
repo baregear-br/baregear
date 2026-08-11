@@ -88,17 +88,16 @@ std::vector<AST*> Parser::statement() {
         TOKEN_TYPE lang = current;
         idx++;
         std::string code = "";
-        int startCol = T(idx).col;
         
-        // Check if it's a multi-line block (next token has greater column)
-        if (T(idx).col > startCol) {
-            // Multi-line block - collect until #end at same or lesser column
-            while (!isAtEnd() && !(TT(idx) == TOKEN_END && T(idx).col <= startCol)) {
+        // Multi-line block: code begins on a line after the marker and runs until
+        // #end at the same or a lesser column than the marker
+        if (!isAtEnd() && T(idx).row != codeRow) {
+            while (!isAtEnd() && !(TT(idx) == TOKEN_END && T(idx).col <= codeCol)) {
                 code += T(idx).value + " ";
                 idx++;
             }
             // Skip the #end token
-            if (TT(idx) == TOKEN_END) {
+            if (!isAtEnd() && TT(idx) == TOKEN_END) {
                 nodes.push_back(new EndNode(lang, codeRow, codeCol));
                 idx++;
             }
@@ -193,6 +192,39 @@ std::vector<AST*> Parser::statement() {
         while (!isAtEnd() && T(idx).col > forCol)
             for (AST* s : statement())
                 nodes.push_back(s);
+    } else if (current == TOKEN_SWITCH) {
+        int swRow = T(idx).row, swCol = T(idx).col;
+        idx++;
+        AST* condition = expr();
+        if (!MATCH(idx, TOKEN_COLON)) {
+            error("Expected ':' after switch condition", swRow, swCol);
+        } else {
+            idx++;
+            std::vector<AST*> cases;
+            while (!isAtEnd() && T(idx).col > swCol) {
+                if (TT(idx) == TOKEN_CASE || TT(idx) == TOKEN_DEFAULT_CASE) {
+                    int caseRow = T(idx).row, caseCol = T(idx).col;
+                    bool isDefault = TT(idx) == TOKEN_DEFAULT_CASE;
+                    idx++;
+                    AST* caseValue = nullptr;
+                    if (!isDefault)
+                        caseValue = expr();
+                    if (!MATCH(idx, TOKEN_COLON)) {
+                        error("Expected ':' after case", caseRow, caseCol);
+                        break;
+                    }
+                    idx++;
+                    std::vector<AST*> caseBody;
+                    while (!isAtEnd() && T(idx).col > caseCol)
+                        for (AST* s : statement())
+                            caseBody.push_back(s);
+                    cases.push_back(new CaseNode(caseValue, isDefault, caseBody, caseRow, caseCol));
+                } else {
+                    idx++;
+                }
+            }
+            nodes.push_back(new SwitchNode(condition, cases, swRow, swCol));
+        }
     } else if (current == TOKEN_RETURN) {
         int retRow = T(idx).row, retCol = T(idx).col;
         idx++;
@@ -517,8 +549,11 @@ AST* Parser::factor() {
             // Check if this is a function call without parentheses: func arg1, arg2
             // Look ahead to see if next token is a valid argument on the same line (identifier, string, number)
             int nextIdx = idx;
-            if (nextIdx < tokens.size() && T(nextIdx).row == T(saveIdx).row &&
-                (TT(nextIdx) == TOKEN_IDENTIFIER || TT(nextIdx) == TOKEN_STRING || TT(nextIdx) == TOKEN_NUMBER)) {
+            bool sameRowArg = nextIdx < tokens.size() && T(nextIdx).row == T(saveIdx).row &&
+                              (TT(nextIdx) == TOKEN_IDENTIFIER || TT(nextIdx) == TOKEN_STRING || TT(nextIdx) == TOKEN_NUMBER);
+            bool loneIdentifier = (nextIdx >= tokens.size() || T(nextIdx).row != T(saveIdx).row) &&
+                                  (saveIdx == 0 || T(saveIdx - 1).row != T(saveIdx).row);
+            if (sameRowArg || loneIdentifier) {
                 idx = saveIdx;
                 std::string funcName = T(idx).value;
                 idx++; // skip function name

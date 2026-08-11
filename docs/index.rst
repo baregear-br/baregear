@@ -14,3 +14,4 @@ baregear - A Programming Language Compiler
    Datatypes
    Function Declaration
    Macro
+   Inline Code

@@ -111,6 +111,19 @@ struct IfWhileNode : AST {
                   condition(std::move(c)), sign(std::move(s)), prefix(std::move(p)) { }
 };
 
+struct CaseNode : AST {
+    AST* value;
+    bool isDefault;
+    std::vector<AST*> body;
+    CaseNode(AST* v, bool def, std::vector<AST*> b, int r = 1, int c = 1) : AST(r, c), value(std::move(v)), isDefault(def), body(std::move(b)) {}
+};
+
+struct SwitchNode : AST {
+    AST* condition;
+    std::vector<AST*> cases;
+    SwitchNode(AST* c, std::vector<AST*> cs, int r = 1, int col = 0) : AST(r, col), condition(std::move(c)), cases(std::move(cs)) {}
+};
+
 struct DefineNode : AST {
     std::string name;
     std::string value;

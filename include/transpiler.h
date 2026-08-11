@@ -26,12 +26,12 @@
 class Transpiler {
 private:
     int idx;
-    bool isVarDTYPEUsed = false;
     std::vector<AST*> nodes;
-    std::stringstream sstr;
-    std::stringstream str;
+    bool isVarDTYPEUsed = false;
+    std::stringstream str, sstr, hstr;
 
     std::string factor(AST* body);
+    std::string statement(AST* node);
     inline std::string getCDataType(DATATYPE dtype);
 public:
     Transpiler(std::vector<AST*> n) : nodes(std::move(n)) { }
