@@ -1,0 +1,19 @@
+numb x = input "Enter Your First Number: "
+text op = input "Enter Your Operator To Calculate: "
+numb y = input "Enter Your Second Number: "
+
+switch op:
+    case '+':
+        print 'Result: ' + (x + y)
+
+    case '-':
+        print 'Result: ' + (x - y)
+
+    case '*':
+        print 'Result: ' + (x * y)
+
+    case '/':
+        print 'Result: ' + (x / y)
+
+    default:
+        print 'Invalid Operator: ' + op
