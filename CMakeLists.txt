@@ -7,6 +7,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg.json" AND NOT CMAKE_TOOLCHAIN_FILE)
 endif()
 
 project(Baregear)
+include(CTest)
 set(APP_VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 23)
