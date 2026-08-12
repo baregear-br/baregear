@@ -1,13 +1,14 @@
 {
   "name": "baregear",
   "version": "1.0",
+  "builtin-baseline": "3af1d1e60af2b2abf55760538cd607829029b07a",
   "dependencies": [
     "llvm",
-    {
-      "name": "qt5",
-      "features": ["qt5core", "qt5network"]
-    },
+    "qt5-base",
     "zlib",
-    "pulseaudio"
+    {
+      "name": "pulseaudio",
+      "platform": "linux"
+    }
   ]
 }
