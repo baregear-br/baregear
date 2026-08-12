@@ -22,22 +22,32 @@
 #include <lexer.h>
 #include <parser.h>
 
+struct FeatureMetadata {
+    int row = 1, col = 1;
+    bool state;
+};
+
 struct CompilerMetadata {
-    bool gc = true, runtime = true, mem_mgr = true, multithreading = true,
-         framework = false, uiToolkit = false;
+    std::map<std::string, FeatureMetadata> features;
+    std::map<std::string, std::string> defines;
 };
 
 class Preprocessor {
 private:
     int idx;
     std::vector<AST*> nodes;
+    std::map<std::string, std::string> defines;
     bool inConditionalBlock = false;
     bool conditionalBlockActive = true;
+    bool anyBranchTaken = false;
     
     void processIfWhileNode(IfWhileNode* node);
+    void processNode(AST* node, CompilerMetadata* meta, std::vector<AST*>& out);
     void optimizeBinOpNode(BinOpNode* node);
     AST* evaluateConstantExpression(AST* node);
     bool isConstant(AST* node);
+    bool isTruthy(AST* node);
+    AST* substituteMacros(AST* node);
 public:
     Preprocessor(std::vector<AST*> n) : nodes(std::move(n)), idx(0) { }
     std::vector<AST*> preprocess(CompilerMetadata* meta);

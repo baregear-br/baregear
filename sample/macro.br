@@ -1,0 +1,16 @@
+osName:
+#if defined WINDOWS
+    print "Windows"
+#else if defined MAC_OS
+    print "MacOS"
+#elif defined Linux
+    print "Linux"
+#else
+    print "Unknown"
+#end
+
+osName
+
+#define EARTH_CREATION_DATE      "Earth Has Been Created 4 Billion Years Ago."
+
+print EARTH_CREATION_DATE

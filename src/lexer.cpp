@@ -26,6 +26,7 @@
 
 #define isAl(x) (x >= 'A' && x <= 'Z' || x >= 'a' && x <= 'z')
 #define isNum(x) (x >= '0' && x <= '9')
+#define isId(x) (isAl(x) || isNum(x) || x == '_')
 
 std::vector<TOKEN> Lexer::lex() {
     std::vector<TOKEN> tokens;
@@ -55,14 +56,24 @@ std::vector<TOKEN> Lexer::lex() {
                 break;
 
             case '-':
-                if (code[idx + 1] == '-' && code[idx + 2] == '-') {
-                    while (peek() != '-' || code[idx + 1] != '-'  || code[idx + 2] != '-') {
-                        if (isAtEnd()) {
-                            error("Multiline comment is not closed using '---'.", row, col);
+                if (idx + 2 < code.size() && code[idx + 1] == '-' && code[idx + 2] == '-') {
+                    advance();
+                    advance();
+                    advance();
+                    bool closed = false;
+                    while (!isAtEnd()) {
+                        if (idx + 2 < code.size() && code[idx] == '-' && code[idx + 1] == '-' && code[idx + 2] == '-') {
+                            advance();
+                            advance();
+                            advance();
+                            closed = true;
                             break;
                         }
                         advance();
                     }
+                    if (!closed)
+                        error("Multiline comment is not closed using '---'.", row, col);
+                    continue;
                 }
                 tkn.type = TOKEN_MINUS;
                 break;
@@ -103,13 +114,15 @@ std::vector<TOKEN> Lexer::lex() {
                 advance();
                 std::string text = "#";
                 if (isAl(code[idx])) {
+                    text += code[idx];
                     while (!isAtEnd() && (isAl(code[idx + 1]) || isNum(code[idx + 1]))) {
                         advance();
                         text += code[idx];
                     }
-                    if (keywords.contains(text))
+                    if (keywords.contains(text)) {
                         tkn.type = keywords.find(text)->second;
-                    else {
+                        tkn.value = text;
+                    } else {
                         while (code[idx - 1] != '\n' && !isAtEnd())
                             advance();
                         continue;
@@ -184,9 +197,9 @@ std::vector<TOKEN> Lexer::lex() {
 
             default:
                 std::string text;
-                if (isAl(c)) {
+                if (isAl(c) || c == '_') {
                     text += c;
-                    while (!isAtEnd() && (isAl(code[idx + 1]) || isNum(code[idx + 1]))) {
+                    while (!isAtEnd() && isId(code[idx + 1])) {
                         advance();
                         text += code[idx];
                     }
@@ -213,12 +226,11 @@ std::vector<TOKEN> Lexer::lex() {
         tokens.push_back(tkn);
         advance();
     }
-    
-    return tokens;
-}
 
-Lexer::~Lexer() {
-    // Clean up any allocated resources if needed
+    idx = 0;
+    row = 1;
+    col = 1;
+    return tokens;
 }
 
 bool Lexer::isAtEnd() {
