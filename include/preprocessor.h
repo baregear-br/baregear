@@ -22,6 +22,11 @@
 #include <lexer.h>
 #include <parser.h>
 
+struct CompilerMetadata {
+    bool gc = true, runtime = true, mem_mgr = true, multithreading = true,
+         framework = false, uiToolkit = false;
+};
+
 class Preprocessor {
 private:
     int idx;
@@ -35,5 +40,5 @@ private:
     bool isConstant(AST* node);
 public:
     Preprocessor(std::vector<AST*> n) : nodes(std::move(n)), idx(0) { }
-    std::vector<AST*> preprocess();
+    std::vector<AST*> preprocess(CompilerMetadata* meta);
 };

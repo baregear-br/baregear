@@ -24,7 +24,7 @@
 #include <definations.h>
 
 extern bool errorHappens;
-std::vector<AST*> Preprocessor::preprocess() {
+std::vector<AST*> Preprocessor::preprocess(CompilerMetadata* meta) {
     if (errorHappens) {
         failure();
         std::exit(1);
@@ -37,9 +37,8 @@ std::vector<AST*> Preprocessor::preprocess() {
         // Skip nodes in inactive conditional blocks
         if (!conditionalBlockActive && inConditionalBlock) {
             if (auto* ifNode = dynamic_cast<IfWhileNode*>(node)) {
-                if (ifNode->sign == TOKEN_IF || ifNode->sign == TOKEN_ELSE) {
+                if (ifNode->sign == TOKEN_IF || ifNode->sign == TOKEN_ELSE)
                     processIfWhileNode(ifNode);
-                }
             }
             continue;
         }
@@ -47,9 +46,11 @@ std::vector<AST*> Preprocessor::preprocess() {
         // Process different node types
         if (auto* ifNode = dynamic_cast<IfWhileNode*>(node)) {
             processIfWhileNode(ifNode);
-            if (conditionalBlockActive) {
+            if (ifNode->prefix != '#')
                 optimizedNodes.push_back(node);
-            }
+            else if (conditionalBlockActive)
+                for (AST* body : ifNode->body)
+                    optimizedNodes.push_back(body);
         } else if (auto* binOpNode = dynamic_cast<BinOpNode*>(node)) {
             optimizeBinOpNode(binOpNode);
             optimizedNodes.push_back(node);
@@ -57,8 +58,24 @@ std::vector<AST*> Preprocessor::preprocess() {
             // Define nodes for constants/macros - pass through to transpiler
             optimizedNodes.push_back(node);
         } else if (auto* featureNode = dynamic_cast<FeatureNode*>(node)) {
-            // Feature nodes control compiler behavior - keep them for transpiler
-            optimizedNodes.push_back(node);
+            if (featureNode->featureName == "gc")
+                meta->gc = featureNode->enabled;
+            else if (featureNode->featureName == "runtime")
+                meta->runtime = featureNode->enabled;
+            else if (featureNode->featureName == "mm")
+                meta->mem_mgr = featureNode->enabled;
+            else if (featureNode->featureName == "multithreading" ||
+                featureNode->featureName == "mthread")
+                meta->multithreading = featureNode->enabled;
+            else if (featureNode->featureName == "uiTK")
+                meta->uiToolkit = featureNode->enabled;
+            else if (featureNode->featureName == "framework")
+                meta->framework = featureNode->enabled;
+            else {
+                error("Unknown BuiltIn Compiler Feature",
+                    featureNode->row, featureNode->col);
+                exit(1);
+            }
         } else if (auto* inlineCodeNode = dynamic_cast<InlineCodeNode*>(node)) {
             // Inline code nodes pass through to transpiler
             optimizedNodes.push_back(node);
@@ -69,28 +86,25 @@ std::vector<AST*> Preprocessor::preprocess() {
             optimizedNodes.push_back(node);
         }
     }
-    
+
+    nodes.clear();
     return optimizedNodes;
 }
 
 void Preprocessor::processIfWhileNode(IfWhileNode* node) {
+    if (node->prefix != '#')
+        return;
     if (node->sign == TOKEN_IF) {
         // Evaluate #if condition
         if (node->condition) {
             AST* result = evaluateConstantExpression(node->condition);
-            if (result && isConstant(result)) {
-                inConditionalBlock = true;
-                conditionalBlockActive = true;
-            } else {
-                inConditionalBlock = true;
-                conditionalBlockActive = false;
-            }
+            inConditionalBlock = true;
+            conditionalBlockActive = result && isConstant(result);
         }
     } else if (node->sign == TOKEN_ELSE) {
-        // #else - activate if no previous block was active
-        if (inConditionalBlock && !conditionalBlockActive) {
-            conditionalBlockActive = true;
-        }
+        // #else - take the opposite state of the preceding #if block
+        if (inConditionalBlock)
+            conditionalBlockActive = !conditionalBlockActive;
     }
 }
 

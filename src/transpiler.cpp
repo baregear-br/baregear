@@ -26,18 +26,14 @@
 std::map<std::string, DATATYPE> variableIndex;
 
 std::string Transpiler::transpile() {
-    std::stringstream str;
-    
-    // Output C header
-    str << "#include <stdio.h>" << std::endl;
-    str << "#include <stdlib.h>" << std::endl;
-    str << "#include <string.h>" << std::endl;
+    // Output CPP header
+    str << "#include <iostream>" << std::endl;
     str << std::endl;
     
-    // Process all AST nodes
-    for (AST* node : nodes)
-        str << factor(node) << std::endl;
-    
+    for(AST* node : nodes)
+        sstr << factor(node) << std::endl;
+    str << sstr.str();
+    nodes.clear();
     return str.str();
 }
 
@@ -82,24 +78,31 @@ std::string Transpiler::factor(AST* body) {
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
         if (var->isDecl) {
-            variableIndex.insert({var->name, var->datatype});
-            return getCDataType(var->datatype) + ' ' + var->name + ';';
+            if (!variableIndex.contains(var->name)) {
+                variableIndex.insert({var->name, var->datatype});
+                return getCDataType(var->datatype) + ' ' + var->name + ';';
+            }
+            return "";
         }
-        return std::string(var->name);
+        if (variableIndex.contains(var->name))
+            if (variableIndex.find(var->name)->second == VARIANT)
+                return "std::get<>(" + var->name + ')';
     }
     else if (auto asn = dynamic_cast<AssignNode*>(body)) {
         if (!variableIndex.contains(asn->name))
             variableIndex.insert({asn->name, VARIANT});
-        else if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
+        if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
             try {
                 std::stol(val->value);
                 return asn->name + " = " + val->value + ';';
-            } catch (std::runtime_error _) {
+            } catch (const std::exception&) {
                 return asn->name + " = \"" + val->value + "\";";
             }
         }
         else if (auto bon = dynamic_cast<BinOpNode*>(asn->node))
             return asn->name + " = " + factor(bon) + ';';
+        else if (auto var = dynamic_cast<VariableNode*>(asn->node))
+            return asn->name + " = " + var->name + ';';
         else
             error("Illegal Value Used On " + asn->name, 0, 0);
     }
@@ -155,24 +158,16 @@ std::string Transpiler::factor(AST* body) {
         // Define nodes for constants/macros - output as #define
         return "#define " + defineNode->name + " " + defineNode->value;
     }
-    else if (auto featureNode = dynamic_cast<FeatureNode*>(body)) {
-        // Feature nodes control compiler behavior - output as comments
-        std::string state = featureNode->enabled ? "enable" : "disable";
-        return "// Compiler feature: " + state + " " + featureNode->featureName;
-    }
     else if (auto inlineCodeNode = dynamic_cast<InlineCodeNode*>(body)) {
         // Inline code nodes - output directly based on language type
         std::string code = inlineCodeNode->code;
         // Remove trailing space if present
-        if (!code.empty() && code.back() == ' ') {
+        if (!code.empty() && code.back() == ' ')
             code.pop_back();
-        }
         
         switch (inlineCodeNode->language) {
             case TOKEN_C:
-                return "extern \"C\" {\n" + code + "\n}\n";  // Direct C code output
-            case TOKEN_CPP:
-                return code;  // Direct C++ code output
+                return code;
             case TOKEN_ASM:
                 return "__asm__(\"" + code + "\")";  // Wrap assembly in GCC inline asm
             default:
@@ -186,18 +181,32 @@ std::string Transpiler::factor(AST* body) {
     else if (auto ifWhileNode = dynamic_cast<IfWhileNode*>(body)) {
         std::stringstream str;
         if (ifWhileNode->sign == TOKEN_IF) {
-            str << "if (" << factor(ifWhileNode->condition) << ") {";
+            str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
+            str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELIF) {
-            str << " else if (" << factor(ifWhileNode->condition) << ") {";
+            str << " else if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
+            str << "}" << std::endl;
         } else if (ifWhileNode->sign == TOKEN_ELSE) {
-            str << " else {";
+            str << " else {" << std::endl;
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
+            str << "}" << std::endl;
+        } else if (ifWhileNode->sign == TOKEN_WHILE) {
+            str << "while (" << factor(ifWhileNode->condition) << ") {" << std::endl;
+            for(AST* stmt : ifWhileNode->body)
+                str << "    " << factor(stmt) << std::endl;
+            str << "}" << std::endl;
+            return str.str();
         }
         return str.str();
     }
     else if (auto returnNode = dynamic_cast<ReturnNode*>(body)) {
-        if (returnNode->node) {
+        if (returnNode->node)
             return "return " + factor(returnNode->node) + ";";
-        }
         return "return;";
     }
     return "";
@@ -206,10 +215,16 @@ std::string Transpiler::factor(AST* body) {
 inline std::string Transpiler::getCDataType(DATATYPE dtype) {
     switch (dtype) {
         case STRING:
-            return "char*";
+            return "std::string";
+
+        case INT:
+            return "int";
+
+        case SHORT:
+            return "short";
 
         case NUMBER:
-            return "long";
+            return "std::variant<int, float, double, short, long>";
 
         case FLOAT:
             return "float";
@@ -218,9 +233,9 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
             return "double";
 
         case VARIANT:
-            return "var";
+            return "std::variant<std::string, int, float, double, short, long>";
 
         default:
-            return "long";
+            return "std::variant<std::string, int, float, double, short, long>";
     }
 }

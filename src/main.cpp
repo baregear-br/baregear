@@ -127,9 +127,8 @@ int main(int argc, char *argv[]) {
             int bracketPos = help.indexOf('[');
             std::cout << "Usage: baregear " << help.mid(bracketPos, firstNewline - bracketPos).toStdString() << std::endl;
             std::cout << help.mid(firstNewline + 1).toStdString();
-        } else {
+        } else
             std::cout << help.toStdString();
-        }
         return positionalArgs.isEmpty() ? 1 : 0;
     }
 
@@ -155,7 +154,8 @@ int main(int argc, char *argv[]) {
     Lexer lex = Lexer(sourceCode);
     Parser parser = Parser(lex.lex());
     Preprocessor pp = Preprocessor(parser.parse());
-    Transpiler trns = Transpiler(pp.preprocess());
+    CompilerMetadata meta;
+    Transpiler trns = Transpiler(pp.preprocess(&meta));
     std::cout << trns.transpile() << std::endl;
 
     return 0;
