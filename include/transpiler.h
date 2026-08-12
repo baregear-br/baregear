@@ -19,13 +19,17 @@
 #ifndef TRANSPILER_H
 #define TRANSPILER_H
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <parser.h>
 
 class Transpiler {
 private:
     int idx;
+    bool isVarDTYPEUsed = false;
     std::vector<AST*> nodes;
+    std::stringstream sstr;
+    std::stringstream str;
 
     std::string factor(AST* body);
     inline std::string getCDataType(DATATYPE dtype);

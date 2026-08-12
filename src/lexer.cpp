@@ -76,26 +76,26 @@ std::vector<TOKEN> Lexer::lex() {
                 break;
 
             case '=':
-                advance();
-                if (peek() == '=')
+                if (idx + 1 < code.size() && code[idx + 1] == '=') {
+                    advance();
                     tkn.type = TOKEN_EQUAL;
-                else
+                } else
                     tkn.type = TOKEN_ASSIGNMENT;
                 break;
 
             case '>':
-                advance();
-                if (peek() == '=')
+                if (idx + 1 < code.size() && code[idx + 1] == '=') {
+                    advance();
                     tkn.type = TOKEN_GREATER_EQUAL;
-                else
+                } else
                     tkn.type = TOKEN_GREATER;
                 break;
 
             case '<':
-                advance();
-                if (peek() == '=')
+                if (idx + 1 < code.size() && code[idx + 1] == '=') {
+                    advance();
                     tkn.type = TOKEN_SHORTER_EQUAL;
-                else
+                } else
                     tkn.type = TOKEN_SHORTER;
                 break;
 
@@ -103,19 +103,19 @@ std::vector<TOKEN> Lexer::lex() {
                 advance();
                 std::string text = "#";
                 if (isAl(code[idx])) {
-                    while (isAl(code[idx]) || isNum(code[idx])) {
-                        text += code[idx];
+                    while (!isAtEnd() && (isAl(code[idx + 1]) || isNum(code[idx + 1]))) {
                         advance();
+                        text += code[idx];
                     }
                     if (keywords.contains(text))
                         tkn.type = keywords.find(text)->second;
                     else {
-                        while (code[idx - 1] != '\n')
+                        while (code[idx - 1] != '\n' && !isAtEnd())
                             advance();
                         continue;
                     }
                 } else {
-                    while (code[idx - 1] != '\n')
+                    while (code[idx - 1] != '\n' && !isAtEnd())
                         advance();
                     continue;
                 }
@@ -177,7 +177,6 @@ std::vector<TOKEN> Lexer::lex() {
                     text += code[idx];
                     advance();
                 }
-                advance(); // skip closing quote
                 tkn.value = text;
                 tkn.type = TOKEN_STRING;
                 break;
@@ -187,10 +186,9 @@ std::vector<TOKEN> Lexer::lex() {
                 std::string text;
                 if (isAl(c)) {
                     text += c;
-                    advance();
-                    while (isAl(code[idx]) || isNum(code[idx])) {
-                        text += code[idx];
+                    while (!isAtEnd() && (isAl(code[idx + 1]) || isNum(code[idx + 1]))) {
                         advance();
+                        text += code[idx];
                     }
                     tkn.value = text;
                     if (keywords.contains(text))
@@ -199,10 +197,9 @@ std::vector<TOKEN> Lexer::lex() {
                         tkn.type = TOKEN_IDENTIFIER;
                 } else if (isNum(c)) {
                     text += c;
-                    advance();
-                    while (isNum(code[idx])) {
-                        text += code[idx];
+                    while (!isAtEnd() && isNum(code[idx + 1])) {
                         advance();
+                        text += code[idx];
                     }
                     tkn.value = text;
                     tkn.type = TOKEN_NUMBER;
@@ -225,16 +222,15 @@ Lexer::~Lexer() {
 }
 
 bool Lexer::isAtEnd() {
-    return idx > code.size();
+    return idx >= code.size();
 }
 
 void Lexer::advance() {
-    if (col >= getLine(row).size()) {
+    col++;
+    if (col > getLine(row).size() + 1) {
         col = 1;
         row++;
     }
-    else
-        col++;
     idx++;
 }
 

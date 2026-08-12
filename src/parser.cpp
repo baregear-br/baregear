@@ -34,6 +34,7 @@ std::vector<AST*> Parser::parse() {
         auto stmts = statement();
         nodes.insert(nodes.end(), stmts.begin(), stmts.end());
     }
+    Parser::~Parser();
     return nodes;
 }
 
@@ -42,6 +43,7 @@ std::vector<AST*> Parser::statement() {
     TOKEN_TYPE current = TT(idx);
 
     if (current == TOKEN_DEFINE) {
+        int startRow = T(idx).row, startCol = T(idx).col;
         idx++;
         std::string defineName = T(idx).value;
         idx++;
@@ -49,8 +51,7 @@ std::vector<AST*> Parser::statement() {
         // Collect value until end of line or next macro
         while (!isAtEnd() && TT(idx) != TOKEN_IF && TT(idx) != TOKEN_ELSE &&
                TT(idx) != TOKEN_FEATURE && TT(idx) != TOKEN_NO_FEATURE &&
-               TT(idx) != TOKEN_DEFINE && TT(idx) != TOKEN_C &&
-               TT(idx) != TOKEN_CPP && TT(idx) != TOKEN_ASM &&
+               TT(idx) != TOKEN_DEFINE && TT(idx) != TOKEN_C && TT(idx) != TOKEN_ASM &&
                TT(idx) != TOKEN_END && T(idx).row == T(idx - 1).row) {
             defineValue += T(idx).value + " ";
             idx++;
@@ -59,18 +60,21 @@ std::vector<AST*> Parser::statement() {
         if (!defineValue.empty() && defineValue.back() == ' ') {
             defineValue.pop_back();
         }
-        nodes.push_back(new DefineNode(defineName, defineValue));
+        nodes.push_back(new DefineNode(defineName, defineValue, startRow, startCol));
     } else if (current == TOKEN_FEATURE) {
+        int featRow = T(idx).row, featCol = T(idx).col;
         idx++;
         std::string featureName = T(idx).value;
         idx++;
-        nodes.push_back(new FeatureNode(featureName, true));
+        nodes.push_back(new FeatureNode(featureName, true, featRow, featCol));
     } else if (current == TOKEN_NO_FEATURE) {
+        int noFeatRow = T(idx).row, noFeatCol = T(idx).col;
         idx++;
         std::string featureName = T(idx).value;
         idx++;
-        nodes.push_back(new FeatureNode(featureName, false));
-    } else if (current == TOKEN_C || current == TOKEN_CPP || current == TOKEN_ASM) {
+        nodes.push_back(new FeatureNode(featureName, false, noFeatRow, noFeatCol));
+    } else if (current == TOKEN_C || current == TOKEN_ASM) {
+        int codeRow = T(idx).row, codeCol = T(idx).col;
         TOKEN_TYPE lang = current;
         idx++;
         std::string code = "";
@@ -85,114 +89,248 @@ std::vector<AST*> Parser::statement() {
             }
             // Skip the #end token
             if (TT(idx) == TOKEN_END) {
-                nodes.push_back(new EndNode(lang));
+                nodes.push_back(new EndNode(lang, codeRow, codeCol));
                 idx++;
             }
         } else {
             // Single-line inline code
             while (!isAtEnd() && TT(idx) != TOKEN_IF && TT(idx) != TOKEN_ELSE && 
                    TT(idx) != TOKEN_FEATURE && TT(idx) != TOKEN_NO_FEATURE &&
-                   TT(idx) != TOKEN_C && TT(idx) != TOKEN_CPP && TT(idx) != TOKEN_ASM &&
+                   TT(idx) != TOKEN_C && TT(idx) != TOKEN_ASM &&
                    TT(idx) != TOKEN_END && T(idx).row == T(idx - 1).row) {
                 code += T(idx).value + " ";
                 idx++;
             }
         }
-        nodes.push_back(new InlineCodeNode(code, lang));
+        nodes.push_back(new InlineCodeNode(code, lang, codeRow, codeCol));
     } else if (current == TOKEN_END) {
+        int endRow = T(idx).row, endCol = T(idx).col;
         idx++;
-        nodes.push_back(new EndNode(TOKEN_END));
+        nodes.push_back(new EndNode(TOKEN_END, endRow, endCol));
     } else if (current == TOKEN_IF) {
+        int prevIDX = idx;
+        int ifRow = T(idx).row, ifCol = T(idx).col;
         idx++;
         AST* condition = expr();
         if (MATCH(idx, TOKEN_COLON)) {
             idx++;
             std::vector<AST*> ifBody;
-            int startCol = T(idx).col;
-            while (!isAtEnd() && T(idx).col > startCol) {
-                ifBody.push_back(expr());
+            while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).col > ifCol) {
+                if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
+                    for (AST* s : statement())
+                        ifBody.push_back(s);
+                } else {
+                    ifBody.push_back(expr());
+                }
             }
-            nodes.push_back(new IfWhileNode(condition, TOKEN_IF));
+
+            if (T(prevIDX).value[0] == '#')
+                nodes.push_back(new IfWhileNode(condition, ifBody, TOKEN_IF, '#', ifRow, ifCol));
+            else
+                nodes.push_back(new IfWhileNode(condition, ifBody, TOKEN_IF, ifRow, ifCol));
+        } else {
+            error("Expected ':' after if condition", ifRow, ifCol);
         }
     } else if (current == TOKEN_ELSE) {
+        int prevIDX = idx;
+        int elseRow = T(idx).row, elseCol = T(idx).col;
         if (MATCH(idx + 1, TOKEN_IF)) {
+            idx++;
             idx++;
             AST* condition = expr();
             if (MATCH(idx, TOKEN_COLON)) {
                 idx++;
                 std::vector<AST*> elseIfBody;
-                int startCol = T(idx).col;
-                while (!isAtEnd() && T(idx).col > startCol) {
-                    elseIfBody.push_back(expr());
+                while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).col > elseCol) {
+                    if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
+                        for (AST* s : statement())
+                            elseIfBody.push_back(s);
+                    } else {
+                        elseIfBody.push_back(expr());
+                    }
                 }
-                nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
+                if (T(prevIDX).value[0] == '#')
+                    nodes.push_back(new IfWhileNode(condition, elseIfBody, TOKEN_ELIF, '#', elseRow, elseCol));
+                else
+                    nodes.push_back(new IfWhileNode(condition, elseIfBody, TOKEN_ELIF, elseRow, elseCol));
+            } else {
+                error("Expected ':' after else if condition", elseRow, elseCol);
             }
         } else {
             idx++;
             if (MATCH(idx, TOKEN_COLON)) {
                 idx++;
                 std::vector<AST*> elseBody;
-                int startCol = T(idx).col;
-                while (!isAtEnd() && T(idx).col > startCol) {
-                    elseBody.push_back(expr());
+                while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).col > elseCol) {
+                    if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
+                        for (AST* s : statement())
+                            elseBody.push_back(s);
+                    } else {
+                        elseBody.push_back(expr());
+                    }
                 }
-                nodes.push_back(new IfWhileNode(nullptr, TOKEN_ELSE));
+                if (T(prevIDX).value[0] == '#')
+                    nodes.push_back(new IfWhileNode(nullptr, elseBody, TOKEN_ELSE, '#', elseRow, elseCol));
+                else
+                    nodes.push_back(new IfWhileNode(nullptr, elseBody, TOKEN_ELSE, elseRow, elseCol));
+            } else {
+                error("Expected ':' after else", elseRow, elseCol);
             }
         }
     } else if (current == TOKEN_ELIF) {
+        int prevIDX = idx;
+        int elifRow = T(idx).row, elifCol = T(idx).col;
         idx++;
         AST* condition = expr();
         if (MATCH(idx, TOKEN_COLON)) {
             idx++;
             std::vector<AST*> elifBody;
-            int startCol = T(idx).col;
-            while (!isAtEnd() && T(idx).col > startCol) {
-                elifBody.push_back(expr());
+            while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).col > elifCol) {
+                if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
+                    for (AST* s : statement())
+                        elifBody.push_back(s);
+                } else {
+                    elifBody.push_back(expr());
+                }
             }
-            nodes.push_back(new IfWhileNode(condition, TOKEN_ELIF));
+            if (T(prevIDX).value[0] == '#')
+                nodes.push_back(new IfWhileNode(condition, elifBody, TOKEN_ELIF, '#', elifRow, elifCol));
+            else
+                nodes.push_back(new IfWhileNode(condition, elifBody, TOKEN_ELIF, elifRow, elifCol));
+        } else {
+            error("Expected ':' after elif condition", elifRow, elifCol);
+        }
+    } else if (current == TOKEN_WHILE) {
+        int whileRow = T(idx).row, whileCol = T(idx).col;
+        idx++;
+        AST* condition = expr();
+        if (MATCH(idx, TOKEN_COLON)) {
+            idx++;
+            std::vector<AST*> whileBody;
+            while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && T(idx).col > whileCol) {
+                if (TT(idx) == TOKEN_IF || TT(idx) == TOKEN_ELSE || TT(idx) == TOKEN_ELIF) {
+                    for (AST* s : statement())
+                        whileBody.push_back(s);
+                } else {
+                    whileBody.push_back(expr());
+                }
+            }
+            nodes.push_back(new IfWhileNode(condition, whileBody, TOKEN_WHILE, whileRow, whileCol));
+        } else {
+            error("Expected ':' after while condition", whileRow, whileCol);
         }
     } else if (current == TOKEN_RETURN) {
+        int retRow = T(idx).row, retCol = T(idx).col;
         idx++;
         AST* returnValue = expr();
         VariableNode* returnVar = dynamic_cast<VariableNode*>(returnValue);
         if (!returnVar) {
             // If expr() didn't return a VariableNode, create one from the value
             if (auto* valNode = dynamic_cast<ValueNode*>(returnValue)) {
-                returnVar = new VariableNode(valNode->value, VARIANT);
+                returnVar = new VariableNode(valNode->value, VARIANT, false, retRow, retCol);
             } else {
-                returnVar = new VariableNode("", VARIANT);
+                returnVar = new VariableNode("", VARIANT, false, retRow, retCol);
             }
         }
-        nodes.push_back(new ReturnNode(returnVar));
+        nodes.push_back(new ReturnNode(returnVar, retRow, retCol));
         return nodes;
+    } else if (current == TOKEN_VAR || current == TOKEN_INT || current == TOKEN_FLOAT ||
+               current == TOKEN_DOUBLE || current == TOKEN_SHORT || current == TOKEN_NUMB ||
+               current == TOKEN_TEXT) {
+        DATATYPE dtype;
+        switch (current) {
+            case TOKEN_INT:    dtype = INT;    break;
+            case TOKEN_FLOAT:  dtype = FLOAT;  break;
+            case TOKEN_DOUBLE: dtype = DOUBLE; break;
+            case TOKEN_SHORT:  dtype = SHORT;  break;
+            case TOKEN_NUMB:   dtype = NUMBER; break;
+            case TOKEN_TEXT:   dtype = STRING; break;
+            default:           dtype = VARIANT; break;
+        }
+        int declRow = T(idx).row, declCol = T(idx).col;
+        idx++;
+        std::vector<std::string> names;
+        while (!isAtEnd() && TT(idx) == TOKEN_IDENTIFIER) {
+            names.push_back(T(idx).value);
+            idx++;
+            if (!isAtEnd() && MATCH(idx, TOKEN_COMMA)) {
+                idx++;
+                continue;
+            }
+            break;
+        }
+        if (!names.empty() && !isAtEnd() && MATCH(idx, TOKEN_COLON) && idx + 1 < tokens.size()) {
+            switch (TT(idx + 1)) {
+                case TOKEN_INT:    dtype = INT;    break;
+                case TOKEN_FLOAT:  dtype = FLOAT;  break;
+                case TOKEN_DOUBLE: dtype = DOUBLE; break;
+                case TOKEN_SHORT:  dtype = SHORT;  break;
+                case TOKEN_NUMB:   dtype = NUMBER; break;
+                case TOKEN_TEXT:   dtype = STRING; break;
+                default: break;
+            }
+            idx += 2;
+        }
+        for (const auto& name : names)
+            nodes.push_back(new VariableNode(name, dtype, true, declRow, declCol));
+        if (!names.empty() && !isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
+            idx++;
+            AST* value = expr();
+            for (const auto& name : names)
+                nodes.push_back(new AssignNode(name, value, declRow, declCol));
+        }
     } else if (current == TOKEN_IDENTIFIER) {
         std::vector<std::string> varNames;
         int saveIdx = idx;
 
         while (true) {
-            if (TT(idx) == TOKEN_IDENTIFIER) {
+            if (!isAtEnd() && TT(idx) == TOKEN_IDENTIFIER) {
                 varNames.push_back(T(idx).value);
                 idx++;
-                if (MATCH(idx, TOKEN_COMMA)) {
+                if (!isAtEnd() && MATCH(idx, TOKEN_COMMA)) {
                     idx++;
                     continue;
-                } else if (MATCH(idx, TOKEN_ASSIGNMENT)) {
+                } else if (!isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
                     idx++;
                     break;
                 } else {
-                    idx = saveIdx;
-                    TOKEN_TYPE next = TT(idx + 1);
+                    TOKEN_TYPE next = isAtEnd() ? TOKEN_SEMICOLON : TT(idx);
                     if (next == TOKEN_STRING || next == TOKEN_NUMBER ||
-                        next == TOKEN_IDENTIFIER || next == TOKEN_LPAREN) {
+                        next == TOKEN_IDENTIFIER || next == TOKEN_LPAREN ||
+                        next == TOKEN_EQUAL || next == TOKEN_GREATER ||
+                        next == TOKEN_SHORTER || next == TOKEN_GREATER_EQUAL ||
+                        next == TOKEN_SHORTER_EQUAL || next == TOKEN_AND ||
+                        next == TOKEN_OR || next == TOKEN_XOR) {
+                        idx = saveIdx;
                         nodes.push_back(expr());
                     } else {
-                        for (const auto& varName : varNames) {
-                            nodes.push_back(new VariableNode(varName, VARIANT, true));
+                        DATATYPE dtype = VARIANT;
+                        if (next == TOKEN_COLON && idx + 1 < tokens.size()) {
+                            switch (TT(idx + 1)) {
+                                case TOKEN_INT:    dtype = INT;    break;
+                                case TOKEN_FLOAT:  dtype = FLOAT;  break;
+                                case TOKEN_DOUBLE: dtype = DOUBLE; break;
+                                case TOKEN_SHORT:  dtype = SHORT;  break;
+                                case TOKEN_NUMB:   dtype = NUMBER; break;
+                                case TOKEN_TEXT:   dtype = STRING; break;
+                                default: break;
+                            }
+                            idx += 2;
+                        }
+                        for (const auto& varName : varNames)
+                            nodes.push_back(new VariableNode(varName, dtype, true, T(saveIdx).row, T(saveIdx).col));
+                        if (!isAtEnd() && MATCH(idx, TOKEN_ASSIGNMENT)) {
+                            idx++;
+                            AST* value = expr();
+                            for (const auto& varName : varNames)
+                                nodes.push_back(new AssignNode(varName, value, T(saveIdx).row, T(saveIdx).col));
                         }
                     }
                     break;
                 }
             } else {
+                if (isAtEnd())
+                    break;
                 idx = saveIdx;
                 nodes.push_back(expr());
                 break;
@@ -200,16 +338,15 @@ std::vector<AST*> Parser::statement() {
         }
 
         if (!varNames.empty() && idx > 0 && TT(idx - 1) == TOKEN_ASSIGNMENT) {
-            for (const auto& varName : varNames) {
-                nodes.push_back(new VariableNode(varName, VARIANT, true));
-            }
+            for (const auto& varName : varNames)
+                nodes.push_back(new VariableNode(varName, VARIANT, true, T(saveIdx).row, T(saveIdx).col));
             AST* value = expr();
-            for (const auto& varName : varNames) {
-                nodes.push_back(new AssignNode(varName, value));
-            }
+            for (const auto& varName : varNames)
+                nodes.push_back(new AssignNode(varName, value, T(saveIdx).row, T(saveIdx).col));
         }
     } else {
-        nodes.push_back(expr());
+        if (!isAtEnd())
+            nodes.push_back(expr());
     }
 
     return nodes;
@@ -217,20 +354,35 @@ std::vector<AST*> Parser::statement() {
 
 AST* Parser::expr() {
     AST* node = term();
-    while (MATCH(idx, TOKEN_PLUS) || MATCH(idx, TOKEN_MINUS)) {
+    while (!isAtEnd() &&
+           (MATCH(idx, TOKEN_PLUS) || MATCH(idx, TOKEN_MINUS) ||
+           MATCH(idx, TOKEN_EQUAL) || MATCH(idx, TOKEN_GREATER) ||
+           MATCH(idx, TOKEN_SHORTER) || MATCH(idx, TOKEN_GREATER_EQUAL) ||
+           MATCH(idx, TOKEN_SHORTER_EQUAL) || MATCH(idx, TOKEN_AND) ||
+           MATCH(idx, TOKEN_OR) || MATCH(idx, TOKEN_XOR) ||
+           MATCH(idx, TOKEN_ASSIGNMENT))) {
         TOKEN_TYPE op = TT(idx);
+        int opRow = T(idx).row, opCol = T(idx).col;
         idx++;
-        node = new BinOpNode(node, op, term());
+        if (op == TOKEN_ASSIGNMENT) {
+            if (auto* var = dynamic_cast<VariableNode*>(node)) {
+                node = new AssignNode(var->name, expr(), opRow, opCol);
+                break;
+            }
+            continue;
+        }
+        node = new BinOpNode(node, op, term(), opRow, opCol);
     }
     return node;
 }
 
 AST* Parser::term() {
     AST* node = factor();
-    while (MATCH(idx, TOKEN_MULTIPLY) || MATCH(idx, TOKEN_DIVIDE)) {
+    while (!isAtEnd() && (MATCH(idx, TOKEN_MULTIPLY) || MATCH(idx, TOKEN_DIVIDE))) {
         TOKEN_TYPE op = TT(idx);
+        int opRow = T(idx).row, opCol = T(idx).col;
         idx++;
-        node = new BinOpNode(node, op, factor());
+        node = new BinOpNode(node, op, factor(), opRow, opCol);
     }
     return node;
 }
@@ -239,7 +391,7 @@ AST* Parser::factor() {
     TOKEN_TYPE op = TT(idx);
     if (op == TOKEN_STRING || op == TOKEN_NUMBER) {
         idx++;
-        return new ValueNode(T(idx - 1).value);
+        return new ValueNode(T(idx - 1).value, T(idx - 1).row, T(idx - 1).col);
     }
     else if (op == TOKEN_IDENTIFIER) {
         // Check if this is a function definition (followed by colon)
@@ -261,7 +413,7 @@ AST* Parser::factor() {
             }
             idx++; // skip closing paren
 
-            return new CallNode(funcName, args);
+            return new CallNode(funcName, args, T(saveIdx).row, T(saveIdx).col);
         }
         else {
             // Check if this is a function call without parentheses: func arg1, arg2
@@ -286,7 +438,7 @@ AST* Parser::factor() {
                     args.push_back(expr());
                 }
                 
-                return new CallNode(funcName, args);
+                return new CallNode(funcName, args, T(saveIdx).row, T(saveIdx).col);
             }
         }
         if (idx < tokens.size() && MATCH(idx, TOKEN_COLON)) {
@@ -305,16 +457,17 @@ AST* Parser::factor() {
 
             // Empty parameter list for function definition
             std::vector<VariableNode*> argNodes;
-            return new FunctionNode(funcName, argNodes, body);
+            return new FunctionNode(funcName, argNodes, body, T(saveIdx).row, T(saveIdx).col);
         } else {
             idx = saveIdx;
             idx++;
-            return new VariableNode(T(idx - 1).value, VARIANT);
+            return new VariableNode(T(idx - 1).value, VARIANT, false, T(idx - 1).row, T(idx - 1).col);
         }
     } else if (op == TOKEN_ASSIGNMENT) {
+        int assignRow = T(idx - 1).row, assignCol = T(idx - 1).col;
         const std::string name = T(idx - 1).value;
         idx++;
-        return new AssignNode(name, factor());
+        return new AssignNode(name, factor(), assignRow, assignCol);
     }
     else if (op == TOKEN_LPAREN) {
         char openBracket = '(';
@@ -348,4 +501,5 @@ AST* Parser::factor() {
 Parser::~Parser() {
     idx = 0;
     tokens.clear();
+    lexs.clear();
 }
