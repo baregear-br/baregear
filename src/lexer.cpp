@@ -52,7 +52,11 @@ std::vector<TOKEN> Lexer::lex() {
                 break;
 
             case '+':
-                tkn.type = TOKEN_PLUS;
+                if (idx + 1 < code.size() && code[idx + 1] == '=') {
+                    tkn.type = TOKEN_INCREMENT;
+                    advance();
+                } else
+                    tkn.type = TOKEN_PLUS;
                 break;
 
             case '-':
@@ -74,8 +78,11 @@ std::vector<TOKEN> Lexer::lex() {
                     if (!closed)
                         error("Multiline comment is not closed using '---'.", row, col);
                     continue;
-                }
-                tkn.type = TOKEN_MINUS;
+                } else if (idx + 1 < code.size() && code[idx + 1] == '=') {
+                    tkn.type = TOKEN_DECREMENT;
+                    advance();
+                } else
+                    tkn.type = TOKEN_MINUS;
                 break;
 
             case '*':

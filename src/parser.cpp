@@ -238,13 +238,14 @@ std::vector<AST*> Parser::statement() {
                current == TOKEN_TEXT) {
         DATATYPE dtype;
         switch (current) {
-            case TOKEN_INT:    dtype = INT;    break;
-            case TOKEN_FLOAT:  dtype = FLOAT;  break;
-            case TOKEN_DOUBLE: dtype = DOUBLE; break;
-            case TOKEN_SHORT:  dtype = SHORT;  break;
-            case TOKEN_NUMB:   dtype = NUMBER; break;
-            case TOKEN_TEXT:   dtype = STRING; break;
-            default:           dtype = VARIANT; break;
+            case TOKEN_BOOLEAN: dtype = BOOL; break;
+            case TOKEN_INT:     dtype = INT;    break;
+            case TOKEN_FLOAT:   dtype = FLOAT;  break;
+            case TOKEN_DOUBLE:  dtype = DOUBLE; break;
+            case TOKEN_SHORT:   dtype = SHORT;  break;
+            case TOKEN_NUMB:    dtype = NUMBER; break;
+            case TOKEN_TEXT:    dtype = STRING; break;
+            default:            dtype = VARIANT; break;
         }
         int declRow = T(idx).row, declCol = T(idx).col;
         idx++;
@@ -260,13 +261,14 @@ std::vector<AST*> Parser::statement() {
         }
         if (!names.empty() && !isAtEnd() && MATCH(idx, TOKEN_COLON) && idx + 1 < tokens.size()) {
             switch (TT(idx + 1)) {
-                case TOKEN_INT:    dtype = INT;    break;
-                case TOKEN_FLOAT:  dtype = FLOAT;  break;
-                case TOKEN_DOUBLE: dtype = DOUBLE; break;
-                case TOKEN_SHORT:  dtype = SHORT;  break;
-                case TOKEN_NUMB:   dtype = NUMBER; break;
-                case TOKEN_TEXT:   dtype = STRING; break;
-                default: break;
+                case TOKEN_BOOLEAN: dtype = BOOL; break;
+                case TOKEN_INT:     dtype = INT;    break;
+                case TOKEN_FLOAT:   dtype = FLOAT;  break;
+                case TOKEN_DOUBLE:  dtype = DOUBLE; break;
+                case TOKEN_SHORT:   dtype = SHORT;  break;
+                case TOKEN_NUMB:    dtype = NUMBER; break;
+                case TOKEN_TEXT:    dtype = STRING; break;
+                default:            break;
             }
             idx += 2;
         }
@@ -490,13 +492,21 @@ AST* Parser::expr() {
            MATCH(idx, TOKEN_SHORTER) || MATCH(idx, TOKEN_GREATER_EQUAL) ||
            MATCH(idx, TOKEN_SHORTER_EQUAL) || MATCH(idx, TOKEN_AND) ||
            MATCH(idx, TOKEN_OR) || MATCH(idx, TOKEN_XOR) ||
-           MATCH(idx, TOKEN_ASSIGNMENT))) {
+           MATCH(idx, TOKEN_ASSIGNMENT) || MATCH(idx, TOKEN_INCREMENT) ||
+           MATCH(idx, TOKEN_DECREMENT))) {
         TOKEN_TYPE op = TT(idx);
         int opRow = T(idx).row, opCol = T(idx).col;
         idx++;
         if (op == TOKEN_ASSIGNMENT) {
             if (auto* var = dynamic_cast<VariableNode*>(node)) {
                 node = new AssignNode(var->name, expr(), opRow, opCol);
+                break;
+            }
+            continue;
+        }
+        else if (op == TOKEN_INCREMENT || op == TOKEN_DECREMENT) {
+            if (auto* var = dynamic_cast<VariableNode*>(node)) {
+                node = new BinOpNode(var, op, term(), opRow, opCol);
                 break;
             }
             continue;
@@ -519,8 +529,17 @@ AST* Parser::term() {
 
 AST* Parser::factor() {
     TOKEN_TYPE op = TT(idx);
-    if (op == TOKEN_STRING || op == TOKEN_NUMBER) {
+    if (op == TOKEN_STRING || op == TOKEN_NUMBER || op == TOKEN_TRUE || op == TOKEN_FALSE) {
         idx++;
+        if (op == TOKEN_TRUE || op == TOKEN_FALSE) {
+            if (op == TOKEN_TRUE)
+                return new BooleanNode(true, T(idx - 1).row, T(idx - 1).col);
+            else if (op == TOKEN_FALSE)
+                return new BooleanNode(false, T(idx - 1).row, T(idx - 1).col);
+            else
+                error("Boolean Value Must Be 'true' or 'false'.", T(idx).row, T(idx).col);
+        }
+            
         return new ValueNode(T(idx - 1).value, T(idx - 1).row, T(idx - 1).col);
     }
     else if (op == TOKEN_IDENTIFIER) {
@@ -537,9 +556,10 @@ AST* Parser::factor() {
             std::vector<AST*> args;
             while (!MATCH(idx, TOKEN_RPAREN) && !isAtEnd()) {
                 args.push_back(expr());
-                if (MATCH(idx, TOKEN_COMMA)) {
+                if (MATCH(idx, TOKEN_COMMA))
                     idx++;
-                }
+                else
+                    error("Expected ','.", T(idx).row, T(idx).col);
             }
             idx++; // skip closing paren
 
@@ -562,9 +582,8 @@ AST* Parser::factor() {
                 // Collect arguments until end of line, semicolon, dot, or colon mismatch
                 while (!isAtEnd() && TT(idx) != TOKEN_SEMICOLON && TT(idx) != TOKEN_DOT && T(idx).row == T(saveIdx).row) {
                     // Check for colon mismatch
-                    if (TT(idx) == TOKEN_COLON && (idx + 1 >= tokens.size() || TT(idx + 1) != TOKEN_COLON)) {
+                    if (TT(idx) == TOKEN_COLON && (idx + 1 >= tokens.size() || TT(idx + 1) != TOKEN_COLON))
                         break;
-                    }
                     if (TT(idx) == TOKEN_COMMA) {
                         idx++;
                         continue;
