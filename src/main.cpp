@@ -199,13 +199,11 @@ void bugDetected(std::string message) {
         uLong crc = crc32(0L, Z_NULL, 0);
         std::vector<char> buffer(4096);
         
-        while (file.read(buffer.data(), buffer.size())) {
+        while (file.read(buffer.data(), buffer.size()))
             crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
-        }
         
-        if (file.gcount() > 0) {
+        if (file.gcount() > 0)
             crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
-        }
         file.close();
         
         // Convert CRC32 to hex string
@@ -223,13 +221,11 @@ void bugDetected(std::string message) {
         uLong crc = crc32(0L, Z_NULL, 0);
         std::vector<char> buffer(4096);
         
-        while (ramFile.read(buffer.data(), buffer.size())) {
+        while (ramFile.read(buffer.data(), buffer.size()))
             crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
-        }
         
-        if (ramFile.gcount() > 0) {
+        if (ramFile.gcount() > 0)
             crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
-        }
         ramFile.close();
         
         // Convert CRC32 to hex string
@@ -243,7 +239,7 @@ void bugDetected(std::string message) {
         // Checksums differ - restart application
         qCritical() << "Software Is Corrupted on RAM. Restarting application...";
         QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
-        QCoreApplication::exit(1);
+        QCoreApplication::exit(0);
         return;
     }
     

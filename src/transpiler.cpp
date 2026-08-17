@@ -26,9 +26,39 @@
 
 std::map<std::string, DATATYPE> variableIndex;
 
+// Helper function to determine if an AST node evaluates to a string or number
+DATATYPE Transpiler::getOperandType(AST* node) {
+    if (auto val = dynamic_cast<ValueNode*>(node)) {
+        try {
+            std::stol(val->value);
+            return INT;
+        } catch (std::invalid_argument&) {
+            return STRING;
+        } catch (std::out_of_range&) {
+            return STRING;
+        }
+    }
+    else if (auto boolNode = dynamic_cast<BooleanNode*>(node))
+        return BOOL;
+    else if (auto var = dynamic_cast<VariableNode*>(node)) {
+        if (variableIndex.contains(var->name))
+            return variableIndex.find(var->name)->second;
+        return VARIANT;
+    }
+    else if (auto bon = dynamic_cast<BinOpNode*>(node)) {
+        // For nested binary ops, return the type based on the operator
+        if (bon->op == TOKEN_PLUS)
+            // Could be string or number depending on operands
+            return VARIANT;
+        return INT; // Other operators produce numbers
+    }
+    return VARIANT;
+}
+
 std::string Transpiler::transpile() {
     // Output CPP header
     hstr << "#include <iostream>" << std::endl;
+    hstr << "#include <cstdbool>" << std::endl;
     sstr << std::endl;
 
     std::stringstream mainStmts;
@@ -54,27 +84,26 @@ std::string Transpiler::statement(AST* node) {
     std::string s = factor(node);
     if (dynamic_cast<CallNode*>(node) ||
         dynamic_cast<BinOpNode*>(node) ||
-        dynamic_cast<ValueNode*>(node)) {
+        dynamic_cast<ValueNode*>(node))
         return s + ';';
-    }
-    if (auto var = dynamic_cast<VariableNode*>(node)) {
+    
+    if (auto var = dynamic_cast<VariableNode*>(node))
         if (!var->isDecl)
             return s + ';';
-    }
     return s;
 }
 
 std::string Transpiler::factor(AST* body) {
     if (auto fn = dynamic_cast<FunctionNode*>(body)) {
+        vdtype = INT;
         std::stringstream str;
         str << "void " << fn->name << "(";
-        for (size_t i = 0; i < fn->param.size(); i++) {
+        for (size_t i = 0; i < fn->param.size(); i++)
             if (auto varParam = dynamic_cast<VariableNode*>(fn->param[i])) {
                 if (i > 0) str << ", ";
                 str << getCDataType(varParam->datatype) << ' ' << varParam->name;
                 variableIndex.insert({varParam->name, varParam->datatype});
             }
-        }
 
         str << ") {" << std::endl;
         for (AST* body : fn->body)
@@ -84,6 +113,7 @@ std::string Transpiler::factor(AST* body) {
         return str.str();
     }
     else if (auto call = dynamic_cast<CallNode*>(body)) {
+        vdtype = INT;
         std::stringstream str;
         str << call->name << "(";
         for (size_t i = 0; i < call->param.size(); i++) {
@@ -97,14 +127,19 @@ std::string Transpiler::factor(AST* body) {
         // Check if the value is a string (contains non-numeric characters)
         try {
             std::stol(val->value);
+            vdtype = INT;
             return val->value; // It's a number
         } catch (std::invalid_argument&) {
-            // It's a string, add quotes
-            return "\"" + val->value + "\"";
+            vdtype = STRING;
+            return "\"" + val->value + "\""; // It's a string
         } catch (std::out_of_range&) {
-            // It's a string, add quotes
-            return "\"" + val->value + "\"";
+            vdtype = STRING;
+            return "\"" + val->value + "\""; // It's a string
         }
+    }
+    else if (auto boolNode = dynamic_cast<BooleanNode*>(body)) {
+        vdtype = BOOL;
+        return boolNode->condition ? "true" : "false";
     }
     else if (auto var = dynamic_cast<VariableNode*>(body)) {
         if (var->isDecl) {
@@ -116,7 +151,7 @@ std::string Transpiler::factor(AST* body) {
         }
         if (variableIndex.contains(var->name))
             return variableIndex.find(var->name)->second == VARIANT
-                       ? "std::get<>(" + var->name + ')'
+                       ? "std::get<" + getCDataType(vdtype) + ">(" + var->name + ')'
                        : var->name;
         return var->name;
     }
@@ -126,15 +161,20 @@ std::string Transpiler::factor(AST* body) {
         if (auto val = dynamic_cast<ValueNode*>(asn->node)) {
             try {
                 std::stol(val->value);
+                vdtype = INT;
                 return asn->name + " = " + val->value + ';';
             } catch (const std::exception&) {
+                vdtype = STRING;
                 return asn->name + " = \"" + val->value + "\";";
             }
         }
-        else if (auto bon = dynamic_cast<BinOpNode*>(asn->node))
+        else if (auto bon = dynamic_cast<BinOpNode*>(asn->node)) {
+            if (bon->op == TOKEN_INCREMENT || bon->op == TOKEN_DECREMENT)
+                return asn->name + " " + ((bon->op == TOKEN_INCREMENT) ? "+=" : "-=") + " " + factor(bon->right) + ';';
             return asn->name + " = " + factor(bon) + ';';
+        }
         else if (auto call = dynamic_cast<CallNode*>(asn->node))
-            return asn->name + " = " + factor(call);
+            return asn->name + " = " + factor(call) + ';';
         else if (auto var = dynamic_cast<VariableNode*>(asn->node))
             return asn->name + " = " + var->name + ';';
         else
@@ -142,55 +182,114 @@ std::string Transpiler::factor(AST* body) {
     }
     else if (auto bon = dynamic_cast<BinOpNode*>(body)) {
         std::string op;
+        DATATYPE leftType, rightType;
         switch (bon->op) {
             case TOKEN_PLUS:
                 op = "+";
+                leftType = getOperandType(bon->left);
+                rightType = getOperandType(bon->right);
+                
+                if (leftType == STRING || rightType == STRING)
+                    vdtype = STRING;
+                else
+                    vdtype = LONG;
                 break;
             case TOKEN_MINUS:
                 op = "-";
+                vdtype = LONG;
+                break;
+            case TOKEN_INCREMENT:
+                op = "+=";
+                vdtype = LONG;
+                if (auto var = dynamic_cast<VariableNode*>(bon->left))
+                    return var->name + " " + op + " " + factor(bon->right);
+                break;
+            case TOKEN_DECREMENT:
+                op = "-=";
+                vdtype = LONG;
+                if (auto var = dynamic_cast<VariableNode*>(bon->left))
+                    return var->name + " " + op + " " + factor(bon->right);
                 break;
             case TOKEN_MULTIPLY:
                 op = "*";
+                vdtype = LONG;
                 break;
             case TOKEN_DIVIDE:
                 op = "/";
+                vdtype = LONG;
                 break;
             case TOKEN_EQUAL:
                 op = "==";
+                leftType = getOperandType(bon->left);
+                rightType = getOperandType(bon->right);
+                
+                if (leftType == STRING || rightType == STRING)
+                    vdtype = STRING;
+                else if (leftType == BOOL || rightType == BOOL)
+                    vdtype = BOOL;
+                else
+                    vdtype = LONG;
                 break;
             case TOKEN_GREATER:
                 op = ">";
+                vdtype = LONG;
                 break;
             case TOKEN_SHORTER:
                 op = "<";
+                vdtype = LONG;
                 break;
             case TOKEN_GREATER_EQUAL:
                 op = ">=";
+                vdtype = LONG;
                 break;
             case TOKEN_SHORTER_EQUAL:
                 op = "<=";
+                vdtype = LONG;
                 break;
             case TOKEN_AND:
                 op = "&&";
+                vdtype = LONG;
                 break;
             case TOKEN_OR:
                 op = "||";
+                vdtype = LONG;
                 break;
             case TOKEN_XOR:
                 op = "^";
+                vdtype = LONG;
                 break;
             case TOKEN_NOT:
                 op = "!";
+                vdtype = LONG;
                 break;
             default:
                 op = "+";
+                vdtype = LONG;
                 break;
         }
+        
+        // Type checking for operators (for non-plus and non-equal operators)
+        if (bon->op != TOKEN_PLUS && bon->op != TOKEN_EQUAL) {
+            DATATYPE leftType = getOperandType(bon->left);
+            DATATYPE rightType = getOperandType(bon->right);
+            
+            // Check if operator requires numeric operands
+            if (bon->op == TOKEN_MINUS || bon->op == TOKEN_MULTIPLY || bon->op == TOKEN_DIVIDE)
+                if (leftType == STRING || rightType == STRING)
+                    error("Operator '" + op + "' cannot be used with string operands", bon->row, bon->col);
+        }
+        
         return "(" + factor(bon->left) + " " + op + " " + factor(bon->right) + ")";
     }
     else if (auto defineNode = dynamic_cast<DefineNode*>(body)) {
-        // Define nodes for constants/macros - output as #define
-        return "#define " + defineNode->name + " " + defineNode->value;
+        try {
+            std::stol(defineNode->value);
+            return "#define " + defineNode->name + " " + defineNode->value;
+        } catch (std::invalid_argument&) {
+            return "#define " + defineNode->name + " \"" + defineNode->value + "\"";
+        } catch (std::out_of_range&) {
+            return "#define " + defineNode->name + " \"" + defineNode->value + "\"";
+        }
     }
     else if (auto inlineCodeNode = dynamic_cast<InlineCodeNode*>(body)) {
         // Inline code nodes - output directly based on language type
@@ -198,7 +297,7 @@ std::string Transpiler::factor(AST* body) {
         // Remove trailing space if present
         if (!code.empty() && code.back() == ' ')
             code.pop_back();
-        
+
         switch (inlineCodeNode->language) {
             case TOKEN_C: {
                 // Substitute references to baregear variables inside the inline
@@ -225,12 +324,11 @@ std::string Transpiler::factor(AST* body) {
                     if (it != variableIndex.end()) {
                         bool isDecl = i > 0 && cppTypes.contains(toks[i - 1]);
                         if (!isDecl && it->second == VARIANT)
-                            out << "std::get<>(" << word << ')';
+                            out << "std::get<" + getCDataType(vdtype) + ">(" << word << ')';
                         else
                             out << word;
-                    } else {
+                    } else
                         out << word;
-                    }
                 }
                 return out.str();
             }
@@ -255,12 +353,11 @@ std::string Transpiler::factor(AST* body) {
                 return code;
         }
     }
-    else if (auto endNode = dynamic_cast<EndNode*>(body)) {
-        // End nodes mark block endings - could be used for cleanup or ignored
-        return "";  // No output needed for end markers
-    }
+    else if (auto endNode = dynamic_cast<EndNode*>(body))
+        return "";
     else if (auto ifWhileNode = dynamic_cast<IfWhileNode*>(body)) {
         std::stringstream str;
+        vdtype = BOOL;
         if (ifWhileNode->sign == TOKEN_IF) {
             str << "if (" << factor(ifWhileNode->condition) << ") {" << std::endl;
             for(AST* stmt : ifWhileNode->body)
@@ -286,11 +383,15 @@ std::string Transpiler::factor(AST* body) {
         return str.str();
     }
     else if (auto returnNode = dynamic_cast<ReturnNode*>(body)) {
-        if (returnNode->node)
+        if (returnNode->node) {
+            // Will Be Implemented
+            //vdtype = VARIANT;
             return "return " + factor(returnNode->node) + ";";
+        }
         return "return;";
     }
     else if (auto switchNode = dynamic_cast<SwitchNode*>(body)) {
+        vdtype = getOperandType(switchNode->condition);
         std::stringstream str;
         str << "switch (" << factor(switchNode->condition) << ") {" << std::endl;
         for (AST* c : switchNode->cases) {
@@ -321,6 +422,9 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
         case SHORT:
             return "short";
 
+        case LONG:
+            return "long";
+
         case NUMBER:
             if (!isVarDTYPEUsed) {
                 hstr << "#include <variant>";
@@ -341,9 +445,12 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
                 isVarDTYPEUsed = true;
             }
 
-            return "std::variant<std::string, int, float, double, short, long>";
+            return "std::variant<std::string, int, float, double, short, long, bool>";
+        
+        case BOOL:
+            return "bool";
 
         default:
-            return "std::variant<std::string, int, float, double, short, long>";
+            return "std::variant<std::string, int, float, double, short, long, bool>";
     }
 }

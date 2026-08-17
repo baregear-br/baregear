@@ -59,6 +59,7 @@ List Of Datatypes:
 - `double`: Used to store accurate decimal Numbers
 - `float`: Used to store the decimal Numbers
 - `int`: Used To Store Only Non decimal number
+- `bool`: Used To Store True/False Values
 
 And Guess The Number Game Make To Easier To Gess By User:
 
@@ -89,3 +90,15 @@ Creating Custom Variant Variable:
 
 And When You Store Number With Decimal Or Text on 'alphabetNumber'
 To Assign as text Otherwise You Store Only Number To Assign as int
+
+Using Boolean Variable:
+
+.. code-block:: baregear
+    
+    bool x = true
+    if x:
+        print "X is true"
+
+    bool y = false
+    if y:
+        print "Y is true"

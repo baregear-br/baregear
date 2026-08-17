@@ -29,10 +29,12 @@ private:
     std::vector<AST*> nodes;
     bool isVarDTYPEUsed = false;
     std::stringstream str, sstr, hstr;
+    DATATYPE vdtype;
 
     std::string factor(AST* body);
     std::string statement(AST* node);
     inline std::string getCDataType(DATATYPE dtype);
+    DATATYPE getOperandType(AST* node);
 public:
     Transpiler(std::vector<AST*> n) : nodes(std::move(n)) { }
     std::string transpile();

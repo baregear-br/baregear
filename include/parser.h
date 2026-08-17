@@ -37,10 +37,12 @@ enum DATATYPE {
     FLOAT,
     DOUBLE,
     SHORT,
+    LONG,
     NUMBER,
     STRING,
     LIST,
-    VARIANT
+    VARIANT,
+    BOOL
 };
 
 struct AST {
@@ -165,6 +167,11 @@ struct ClassNode : AST {
 struct ReturnNode : AST {
     AST* node;
     ReturnNode(AST* n, int r = 1, int c = 1) : AST(r, c), node(std::move(n)) { }
+};
+
+struct BooleanNode : AST {
+    bool condition;
+    BooleanNode(bool c, int r = 1, int col = 1) : AST(r, col), condition(std::move(c)) { }
 };
 
 typedef enum {

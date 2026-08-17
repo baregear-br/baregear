@@ -32,6 +32,8 @@ enum TOKEN_TYPE {
     TOKEN_MINUS,
     TOKEN_MULTIPLY,
     TOKEN_DIVIDE,
+    TOKEN_INCREMENT,
+    TOKEN_DECREMENT,
     TOKEN_EQUAL,
     TOKEN_GREATER,
     TOKEN_SHORTER,
@@ -70,6 +72,9 @@ enum TOKEN_TYPE {
     TOKEN_PUBLIC,
     TOKEN_PRIVATE,
     TOKEN_PROTECTED,
+    TOKEN_BOOLEAN,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
     TOKEN_NUMB,
     TOKEN_TRY,
     TOKEN_CATCH,
@@ -89,7 +94,7 @@ enum TOKEN_TYPE {
     TOKEN_VAR
 };
 
-inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
+inline std::unordered_map<std::string, TOKEN_TYPE> keywords = {
         { "if",             TOKEN_IF },
         { "and",            TOKEN_AND},
         { "or",             TOKEN_OR},
@@ -110,6 +115,9 @@ inline std::unordered_map<std::string, TOKEN_TYPE> keywords {
         { "public",         TOKEN_PUBLIC },
         { "private",        TOKEN_PRIVATE },
         { "protected",      TOKEN_PROTECTED },
+        { "bool",           TOKEN_BOOLEAN },
+        { "true",           TOKEN_TRUE },
+        { "false",          TOKEN_FALSE },
         { "int",            TOKEN_INT },
         { "float",          TOKEN_FLOAT},
         { "double",         TOKEN_DOUBLE },
