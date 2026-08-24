@@ -127,9 +127,8 @@ std::vector<AST*> Parser::statement() {
             idx++;
             std::vector<AST*> ifBody = parseBody(ifCol);
             nodes.push_back(new IfWhileNode(condition, ifBody, TOKEN_IF, ifRow, ifCol));
-        } else {
+        } else
             error("Expected ':' after if condition", ifRow, ifCol);
-        }
     } else if (current == TOKEN_ELSE) {
         int prevIDX = idx;
         int elseRow = T(idx).row, elseCol = T(idx).col;
@@ -143,9 +142,8 @@ std::vector<AST*> Parser::statement() {
                 idx++;
                 std::vector<AST*> elseIfBody = parseBody(elseCol);
                 nodes.push_back(new IfWhileNode(condition, elseIfBody, TOKEN_ELIF, elseRow, elseCol));
-            } else {
+            } else
                 error("Expected ':' after else if condition", elseRow, elseCol);
-            }
         } else {
             idx++;
             if (T(prevIDX).value[0] == '#') {
@@ -179,9 +177,8 @@ std::vector<AST*> Parser::statement() {
             idx++;
             std::vector<AST*> whileBody = parseBody(whileCol);
             nodes.push_back(new IfWhileNode(condition, whileBody, TOKEN_WHILE, whileRow, whileCol));
-        } else {
+        } else
             error("Expected ':' after while condition", whileRow, whileCol);
-        }
     } else if (current == TOKEN_FOR) {
         int forRow = T(idx).row, forCol = T(idx).col;
         idx++; // skip 'for'

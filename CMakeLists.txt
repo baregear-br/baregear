@@ -21,6 +21,11 @@ include_directories(include)
 find_package(ZLIB REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Network)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PULSE REQUIRED libpulse)
+pkg_check_modules(LIBELF REQUIRED IMPORTED_TARGET libelf)
+pkg_check_modules(SECCOMP REQUIRED libseccomp)
+
 # Documentation target
 find_program(SPHINX_EXECUTABLE sphinx-build)
 if(SPHINX_EXECUTABLE)

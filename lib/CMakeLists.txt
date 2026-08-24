@@ -27,8 +27,8 @@ add_custom_command(
     COMMENT "Assembling runtime.asm with NASM (${NASM_FORMAT})"
 )
 
-# Create static library from object file
-add_library(optimizedRuntime STATIC ${CMAKE_CURRENT_BINARY_DIR}/runtime.o)
+# Create static library from object file and C source
+add_library(optimizedRuntime STATIC ${CMAKE_CURRENT_BINARY_DIR}/runtime.o dynvar.c)
 
 # Set optimization flags for maximum speed and lowest latency
 target_compile_options(optimizedRuntime PRIVATE

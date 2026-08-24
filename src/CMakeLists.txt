@@ -1,7 +1,3 @@
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(PULSE REQUIRED libpulse)
-
-# Generate audio headers from MP3 files for embedding
 add_custom_command(
     OUTPUT ${CMAKE_SOURCE_DIR}/include/success_audio.h ${CMAKE_SOURCE_DIR}/include/failure_audio.h
     COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/generateAudioHeaders.py
@@ -40,9 +36,11 @@ target_link_libraries(baregear PRIVATE
         ${PULSE_LIBRARIES}
         ZLIB::ZLIB
         optimizedRuntime
+        PkgConfig::LIBELF
 )
 
 target_include_directories(baregear PRIVATE
+        ${SECCOMP_INCLUDE_DIRS}
         ${PULSE_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/include
 )

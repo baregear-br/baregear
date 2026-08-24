@@ -16,14 +16,35 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef RUNTIME_H
-#define RUNTIME_H
+#ifndef DYNVAR_H
+#define DYNVAR_H
 
-#include <stddef.h>
+#include <stdint.h>
 
-void* falloc(void* address, size_t length);
-void* frealloc(void* old_address, size_t old_size, size_t new_size);
-int ffree(void* address, size_t length);
-void exit(int code);
+typedef struct {
+    uintptr_t       address;
+    unsigned int    length;
+} dynvar;
 
-#endif // RUNTIME_H
+typedef struct {
+    uintptr_t       address;
+    unsigned int    sizePerBlks;
+    unsigned int    count;
+} vector;
+
+typedef enum {
+    SUCCESS,
+    ILVAR,
+    BFROVRFLW
+} DYNVAR_CODE;
+
+extern DYNVAR_CODE vectorAppend(vector* var, void* source);
+extern long vectorGetValue(vector* var, int index);
+extern int vectorFind(vector* var, long value);
+extern DYNVAR_CODE vectorDelete(vector* var, int index);
+extern void vectorDeleteAll(vector* var);
+
+extern void setValue(dynvar* var, long* value);
+extern long* getValue(dynvar var);
+
+#endif // DYNVAR_H

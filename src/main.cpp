@@ -190,112 +190,114 @@ void warn(std::string message, unsigned int row, unsigned int col) {
     printNotice(row, col, 226, message);
 }
 
-void bugDetected(std::string message) {
-    // Calculate CRC32 from disk
-    std::ifstream file("/proc/self/exe", std::ios::binary);
-    std::string diskCRC32;
-    
-    if (file.is_open()) {
-        uLong crc = crc32(0L, Z_NULL, 0);
-        std::vector<char> buffer(4096);
+extern "C" {
+    void bugDetected(char* message) {
+        // Calculate CRC32 from disk
+        std::ifstream file("/proc/self/exe", std::ios::binary);
+        std::string diskCRC32;
         
-        while (file.read(buffer.data(), buffer.size()))
-            crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
+        if (file.is_open()) {
+            uLong crc = crc32(0L, Z_NULL, 0);
+            std::vector<char> buffer(4096);
+            
+            while (file.read(buffer.data(), buffer.size()))
+                crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
+            
+            if (file.gcount() > 0)
+                crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
+            file.close();
+            
+            // Convert CRC32 to hex string
+            std::stringstream ss;
+            ss << std::hex << std::setw(8) << std::setfill('0') << crc;
+            diskCRC32 = ss.str();
+        }
         
-        if (file.gcount() > 0)
-            crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), file.gcount());
-        file.close();
+        // Calculate CRC32 from RAM (in-memory executable)
+        std::string exePath = QCoreApplication::applicationFilePath().toStdString();
+        std::ifstream ramFile(exePath, std::ios::binary);
+        std::string ramCRC32;
         
-        // Convert CRC32 to hex string
-        std::stringstream ss;
-        ss << std::hex << std::setw(8) << std::setfill('0') << crc;
-        diskCRC32 = ss.str();
-    }
-    
-    // Calculate CRC32 from RAM (in-memory executable)
-    std::string exePath = QCoreApplication::applicationFilePath().toStdString();
-    std::ifstream ramFile(exePath, std::ios::binary);
-    std::string ramCRC32;
-    
-    if (ramFile.is_open()) {
-        uLong crc = crc32(0L, Z_NULL, 0);
-        std::vector<char> buffer(4096);
+        if (ramFile.is_open()) {
+            uLong crc = crc32(0L, Z_NULL, 0);
+            std::vector<char> buffer(4096);
+            
+            while (ramFile.read(buffer.data(), buffer.size()))
+                crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
+            
+            if (ramFile.gcount() > 0)
+                crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
+            ramFile.close();
+            
+            // Convert CRC32 to hex string
+            std::stringstream ss;
+            ss << std::hex << std::setw(8) << std::setfill('0') << crc;
+            ramCRC32 = ss.str();
+        }
         
-        while (ramFile.read(buffer.data(), buffer.size()))
-            crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
+        // Compare checksums
+        if (diskCRC32 != ramCRC32) {
+            // Checksums differ - restart application
+            qCritical() << "Software Is Corrupted on RAM. Restarting application...";
+            QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
+            QCoreApplication::exit(0);
+            return;
+        }
         
-        if (ramFile.gcount() > 0)
-            crc = crc32(crc, reinterpret_cast<const Bytef*>(buffer.data()), ramFile.gcount());
-        ramFile.close();
-        
-        // Convert CRC32 to hex string
-        std::stringstream ss;
-        ss << std::hex << std::setw(8) << std::setfill('0') << crc;
-        ramCRC32 = ss.str();
-    }
-    
-    // Compare checksums
-    if (diskCRC32 != ramCRC32) {
-        // Checksums differ - restart application
-        qCritical() << "Software Is Corrupted on RAM. Restarting application...";
-        QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList());
-        QCoreApplication::exit(0);
-        return;
-    }
-    
-    // Check if in release mode
-    #ifdef QT_DEBUG
-        // Debug mode - display bug box
-        std::cout << "========================================" << std::endl;
-        std::cout << "|           BUG DETECTED               |" << std::endl;
-        std::cout << "========================================" << std::endl;
-        std::cout << "| Message: " << message << std::endl;
-        std::cout << "========================================" << std::endl;
-    #elifdef BUG_REPORT_URL
-        // Release mode - report bug via HTTP
-        QNetworkAccessManager manager;
-        QNetworkRequest request(QUrl(QString("http://%1").arg(BUG_REPORT_URL)));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-        
-        QString url;
-        if (!diskCRC32.empty())
-            url = QString("http://%1?title=%2&crc32=%3")
-                          .arg(BUG_REPORT_URL)
-                          .arg(QString::fromStdString(message))
-                          .arg(QString::fromStdString(diskCRC32));
-        else
-            url = QString("http://%1?title=%2")
-                          .arg(BUG_REPORT_URL)
-                          .arg(QString::fromStdString(message));
+        // Check if in release mode
+        #ifdef QT_DEBUG
+            // Debug mode - display bug box
+            std::cout << "========================================" << std::endl;
+            std::cout << "|           BUG DETECTED               |" << std::endl;
+            std::cout << "========================================" << std::endl;
+            std::cout << "| Message: " << message << std::endl;
+            std::cout << "========================================" << std::endl;
+        #elifdef BUG_REPORT_URL
+            // Release mode - report bug via HTTP
+            QNetworkAccessManager manager;
+            QNetworkRequest request(QUrl(QString("http://%1").arg(BUG_REPORT_URL)));
+            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+            
+            QString url;
+            if (!diskCRC32.empty())
+                url = QString("http://%1?title=%2&crc32=%3")
+                            .arg(BUG_REPORT_URL)
+                            .arg(QString::fromStdString(message))
+                            .arg(QString::fromStdString(diskCRC32));
+            else
+                url = QString("http://%1?title=%2")
+                            .arg(BUG_REPORT_URL)
+                            .arg(QString::fromStdString(message));
 
-        request.setUrl(QUrl(url));
-        
-        QNetworkReply* reply = manager.get(request);
-        
-        QObject::connect(reply, &QNetworkReply::finished, [reply, message]() {
-            if (reply->error() == QNetworkReply::NoError) {
-                QByteArray response = reply->readAll();
-                QJsonDocument doc = QJsonDocument::fromJson(response);
-                
-                if (doc.isObject()) {
-                    QJsonObject obj = doc.object();
-                    int requestType = obj["request_type"].toInt();
-                    QString result = obj["result"].toString();
+            request.setUrl(QUrl(url));
+            
+            QNetworkReply* reply = manager.get(request);
+            
+            QObject::connect(reply, &QNetworkReply::finished, [reply, message]() {
+                if (reply->error() == QNetworkReply::NoError) {
+                    QByteArray response = reply->readAll();
+                    QJsonDocument doc = QJsonDocument::fromJson(response);
                     
-                    if (requestType == 400 && result == "ERR_SOFTWARE_CORRUPTED") {
-                        // Print red error and close
-                        std::cout << "\033[31m" << "ERROR: " <<
-                                        "Baregear Compiler Is Corrupted Please Reinstall." << "\033[0m" << std::endl;
-                        QCoreApplication::exit(1);
+                    if (doc.isObject()) {
+                        QJsonObject obj = doc.object();
+                        int requestType = obj["request_type"].toInt();
+                        QString result = obj["result"].toString();
+                        
+                        if (requestType == 400 && result == "ERR_SOFTWARE_CORRUPTED") {
+                            // Print red error and close
+                            std::cout << "\033[31m" << "ERROR: " <<
+                                            "Baregear Compiler Is Corrupted Please Reinstall." << "\033[0m" << std::endl;
+                            QCoreApplication::exit(1);
+                        }
                     }
                 }
-            }
-            reply->deleteLater();
-        });
-        
-        // Wait for async request to complete
-        QEventLoop loop;
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        loop.exec();
-    #endif
+                reply->deleteLater();
+            });
+            
+            // Wait for async request to complete
+            QEventLoop loop;
+            QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+            loop.exec();
+        #endif
+    }
 }

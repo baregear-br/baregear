@@ -150,7 +150,7 @@ std::string Transpiler::factor(AST* body) {
             return "";
         }
         if (variableIndex.contains(var->name))
-            return variableIndex.find(var->name)->second == VARIANT
+            return (variableIndex.find(var->name)->second == VARIANT || variableIndex.find(var->name)->second == NUMBER)
                        ? "std::get<" + getCDataType(vdtype) + ">(" + var->name + ')'
                        : var->name;
         return var->name;
@@ -411,7 +411,7 @@ std::string Transpiler::factor(AST* body) {
     return "";
 }
 
-inline std::string Transpiler::getCDataType(DATATYPE dtype) {
+inline std::string Transpiler::getCDataType(DATATYPE &dtype) {
     switch (dtype) {
         case STRING:
             return "std::string";
@@ -451,6 +451,7 @@ inline std::string Transpiler::getCDataType(DATATYPE dtype) {
             return "bool";
 
         default:
+            dtype = VARIANT;
             return "std::variant<std::string, int, float, double, short, long, bool>";
     }
 }

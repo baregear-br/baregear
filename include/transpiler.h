@@ -33,7 +33,7 @@ private:
 
     std::string factor(AST* body);
     std::string statement(AST* node);
-    inline std::string getCDataType(DATATYPE dtype);
+    inline std::string getCDataType(DATATYPE &dtype);
     DATATYPE getOperandType(AST* node);
 public:
     Transpiler(std::vector<AST*> n) : nodes(std::move(n)) { }

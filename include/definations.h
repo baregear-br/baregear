@@ -50,6 +50,9 @@ extern void error(std::string, unsigned int row, unsigned int col);
 extern void warn(std::string, unsigned int row, unsigned int col);
 extern void success();
 extern void failure();
-extern void bugDetected(std::string message);
+
+extern "C" {
+    extern void bugDetected(char* message);
+}
 
 #endif // DEFINITIONS_H

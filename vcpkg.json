@@ -6,6 +6,7 @@
     "llvm",
     "qt5-base",
     "zlib",
+    "cvector",
     {
       "name": "pulseaudio",
       "platform": "linux"
