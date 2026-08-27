@@ -18,6 +18,8 @@
 
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
+
+#ifdef __cplusplus
 #include <iostream>
 #include <string>
 
@@ -50,9 +52,16 @@ extern void error(std::string, unsigned int row, unsigned int col);
 extern void warn(std::string, unsigned int row, unsigned int col);
 extern void success();
 extern void failure();
+#endif
 
+#ifdef __cplusplus
 extern "C" {
-    extern void bugDetected(char* message);
+#endif
+
+extern void bugDetected(const char* message);
+
+#ifdef __cplusplus
 }
+#endif
 
 #endif // DEFINITIONS_H

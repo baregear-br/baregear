@@ -1,0 +1,3 @@
+[submodule "lib/seccomp"]
+	path = lib/seccomp
+	url = https://github.com/baregear-br/libseccomp.git

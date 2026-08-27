@@ -37,6 +37,7 @@
 #include <iomanip>
 #include <vector>
 #include <string>
+#include <seccomp.h>
 
 #include <lexer.h>
 #include <parser.h>
@@ -191,7 +192,7 @@ void warn(std::string message, unsigned int row, unsigned int col) {
 }
 
 extern "C" {
-    void bugDetected(char* message) {
+    void bugDetected(const char* message) {
         // Calculate CRC32 from disk
         std::ifstream file("/proc/self/exe", std::ios::binary);
         std::string diskCRC32;

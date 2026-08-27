@@ -21,6 +21,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     uintptr_t       address;
     unsigned int    length;
@@ -44,7 +48,11 @@ extern int vectorFind(vector* var, long value);
 extern DYNVAR_CODE vectorDelete(vector* var, int index);
 extern void vectorDeleteAll(vector* var);
 
-extern void setValue(dynvar* var, long* value);
+extern void setValue(dynvar* var, char* value);
 extern long* getValue(dynvar var);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DYNVAR_H

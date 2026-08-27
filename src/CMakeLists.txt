@@ -15,6 +15,10 @@ add_executable(baregear
         parser.cpp
         preprocessor.cpp
         transpiler.cpp
+        debugger.cpp
+        emulatorUtil.c
+        ai.cpp
+        cparser.cpp
         ${CMAKE_SOURCE_DIR}/include/success_audio.h
         ${CMAKE_SOURCE_DIR}/include/failure_audio.h
 )
@@ -24,11 +28,11 @@ target_compile_definitions(baregear PRIVATE
 )
 
 target_compile_options(baregear PRIVATE
-        -std=c++23
-        -Wno-c23-extensions
+        $<$<COMPILE_LANGUAGE:CXX>:-std=c++23>
+        $<$<COMPILE_LANGUAGE:C>:-std=c11>
 )
 
-llvm_map_components_to_libnames(llvm_libs core native)
+llvm_map_components_to_libnames(llvm_libs core native support option)
 target_link_libraries(baregear PRIVATE
         ${llvm_libs}
         Qt5::Core
@@ -37,12 +41,17 @@ target_link_libraries(baregear PRIVATE
         ZLIB::ZLIB
         optimizedRuntime
         PkgConfig::LIBELF
+        seccomp
+        /usr/lib/llvm-18/lib/liblldb.so
+        /usr/lib/llvm-19/lib/libclang-cpp.so.19.1
 )
 
 target_include_directories(baregear PRIVATE
         ${SECCOMP_INCLUDE_DIRS}
         ${PULSE_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/include
+        /usr/lib/llvm-19/include
+        /usr/lib/llvm-18/include
 )
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

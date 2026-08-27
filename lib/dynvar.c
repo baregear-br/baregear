@@ -80,7 +80,7 @@ void vectorDeleteAll(vector* var) {
     var->count = 0;
 }
 
-void setValue(dynvar* var, long* value) {
+void setValue(dynvar* var, char* value) {
     if (var->address == 0)
         var->address = (uintptr_t)falloc(NULL, strlen(value) + 1);
     else if (strlen(value) > 0) {
