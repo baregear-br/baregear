@@ -190,6 +190,19 @@ struct ImportanceNode : AST {
                                                     level(std::move(l)) {}
 };
 
+struct ConditionalFlagNode : AST {
+    AST* condition;
+    std::vector<AST*> body;
+    int row, col;
+    ConditionalFlagNode(AST* cond, std::vector<AST*> b, int r = 1, int c = 1) : condition(cond), body(b), row(r), col(c) {}
+};
+
+struct NoChangeNode : AST {
+    std::vector<AST*> body;
+    int row, col;
+    NoChangeNode(std::vector<AST*> b, int r = 1, int c = 1) : body(b), row(r), col(c) {}
+};
+
 class Parser {
 private:
     std::vector<TOKEN> tokens;

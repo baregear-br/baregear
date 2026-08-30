@@ -21,9 +21,7 @@
 
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define VECTOR_FORMULA(var, idx)    ((void *)((char *)(var)->address + ((idx) * (var)->sizePerBlks)))
 
 typedef struct {
     uintptr_t       address;
@@ -42,6 +40,11 @@ typedef enum {
     BFROVRFLW
 } DYNVAR_CODE;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern void vectorInit(vector* var, unsigned int length);
 extern DYNVAR_CODE vectorAppend(vector* var, void* source);
 extern long vectorGetValue(vector* var, int index);
 extern int vectorFind(vector* var, long value);

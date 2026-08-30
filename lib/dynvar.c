@@ -21,7 +21,16 @@
 #include <stdint.h>
 #include <string.h>
 
-#define VECTOR_FORMULA(var, idx)    ((void *)((char *)(var)->address + ((idx) * (var)->sizePerBlks)))
+void vectorInit(vector* var, unsigned int length) {
+    if (var->address)
+        vectorDeleteAll(&var);
+    else {
+        var->address = (uintptr_t)0;
+        var->count = 0;
+    }
+
+    var->sizePerBlks = length;
+}
 
 DYNVAR_CODE vectorAppend(vector* var, void* source) {
     if (!var->sizePerBlks)

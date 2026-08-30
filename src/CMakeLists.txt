@@ -16,7 +16,7 @@ add_executable(baregear
         preprocessor.cpp
         transpiler.cpp
         debugger.cpp
-        emulatorUtil.c
+        emulatorUtil.cpp
         ai.cpp
         cparser.cpp
         ${CMAKE_SOURCE_DIR}/include/success_audio.h
@@ -43,14 +43,13 @@ target_link_libraries(baregear PRIVATE
         PkgConfig::LIBELF
         seccomp
         /usr/lib/llvm-18/lib/liblldb.so
-        /usr/lib/llvm-19/lib/libclang-cpp.so.19.1
+        /usr/lib/llvm-18/lib/libclang-cpp.so.18.1
 )
 
 target_include_directories(baregear PRIVATE
         ${SECCOMP_INCLUDE_DIRS}
         ${PULSE_INCLUDE_DIRS}
         ${CMAKE_SOURCE_DIR}/include
-        /usr/lib/llvm-19/include
         /usr/lib/llvm-18/include
 )
 

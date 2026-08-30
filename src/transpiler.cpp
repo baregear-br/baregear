@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstring>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <sstream>
@@ -23,8 +25,12 @@
 #include <parser.h>
 #include <transpiler.h>
 #include <definations.h>
+#include <dynvar.h>
+#include <runtime.h>
 
 std::map<std::string, DATATYPE> variableIndex;
+vector* condFlags;
+int col = 1;
 
 // Helper function to determine if an AST node evaluates to a string or number
 DATATYPE Transpiler::getOperandType(AST* node) {
@@ -56,26 +62,59 @@ DATATYPE Transpiler::getOperandType(AST* node) {
 }
 
 std::string Transpiler::transpile() {
-    // Output CPP header
+    vectorInit(condFlags, sizeof(CondFlag));
+    vectorInit(condFlagsMap, sizeof(bool));
+    // vectorInit(&VMaps, sizeof(VMap));
+
     hstr << "#include <iostream>" << std::endl;
     hstr << "#include <cstdbool>" << std::endl;
     sstr << std::endl;
 
     std::stringstream mainStmts;
     for (AST* node : nodes) {
+        col++;
         if (dynamic_cast<FunctionNode*>(node) ||
             dynamic_cast<DefineNode*>(node) ||
-            dynamic_cast<InlineCodeNode*>(node))
+            dynamic_cast<InlineCodeNode*>(node)) {
+            inMain = false;
             sstr << factor(node) << std::endl;
-        else
+        } else {
+            inMain = true;
             mainStmts << "    " << statement(node) << std::endl;
+        }
     }
+
+    int hcol = std::count(hstr.str().begin(), hstr.str().end(), '\n');
+    std::vector<int> remainingFlags;
+    for (int i = 0; condFlags->count - 1 > i; i++) {
+        CondFlag* cflag = (CondFlag*)vectorGetValue(condFlags, i);
+        if ((bool)vectorGetValue(condFlagsMap, i) == true) {
+            remainingFlags.push_back(i);
+            continue;
+        }
+        cflag->col += hcol;
+        memcpy(VECTOR_FORMULA(condFlags, i), (void*)cflag, sizeof(CondFlag));
+    }
+
     hstr << sstr.str();
     hstr << str.str();
     hstr << "int main() {" << std::endl;
+
+    if (remainingFlags.size() > 0) {
+        hcol = std::count(hstr.str().begin(), hstr.str().end(), '\n');
+        for (int i : remainingFlags) {
+            CondFlag* cflag = (CondFlag*)vectorGetValue(condFlags, i);
+            cflag->col += hcol;
+            memcpy(VECTOR_FORMULA(condFlags, i), (void*)cflag, sizeof(CondFlag));
+        }
+
+        remainingFlags.clear();
+    }
+
     hstr << mainStmts.str();
     hstr << "    return 0;" << std::endl;
     hstr << "}" << std::endl;
+
     nodes.clear();
     return hstr.str();
 }
@@ -407,6 +446,17 @@ std::string Transpiler::factor(AST* body) {
         }
         str << "}" << std::endl;
         return str.str();
+    } else if (auto cflagNode = dynamic_cast<ConditionalFlagNode*>(body)) {
+        std::stringstream stream;
+        for(AST* body : cflagNode->body)
+            stream << factor(body) << std::endl;
+
+        CondFlag cflag;
+        cflag.col = col;
+        cflag.condition = cflagNode->condition;
+        vectorAppend(condFlags, &cflag);
+        vectorAppend(condFlagsMap, &inMain);
+        return stream.str();
     }
     return "";
 }

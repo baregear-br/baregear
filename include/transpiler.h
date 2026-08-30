@@ -21,7 +21,15 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <stdbool.h>
+#include <dynvar.h>
 #include <parser.h>
+
+extern vector* condFlags;
+typedef struct {
+    int col;
+    AST* condition;
+} CondFlag;
 
 class Transpiler {
 private:
@@ -30,13 +38,15 @@ private:
     bool isVarDTYPEUsed = false;
     std::stringstream str, sstr, hstr;
     DATATYPE vdtype;
+    vector* condFlagsMap;
+    bool inMain;
 
     std::string factor(AST* body);
     std::string statement(AST* node);
     inline std::string getCDataType(DATATYPE &dtype);
     DATATYPE getOperandType(AST* node);
 public:
-    Transpiler(std::vector<AST*> n) : nodes(std::move(n)) { }
+    Transpiler(std::vector<AST*> n) : nodes(std::move(n)), condFlagsMap(nullptr), inMain(false) { }
     std::string transpile();
 };
 

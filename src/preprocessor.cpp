@@ -109,12 +109,10 @@ void Preprocessor::processNode(AST* node, CompilerMetadata* meta, std::vector<AS
                 meta->features.insert({ featureNode->featureName, fmeta });
             }
         }
-    } else if (auto* inlineCodeNode = dynamic_cast<InlineCodeNode*>(node)) {
-        // Inline code nodes pass through to transpiler
+    } else if (dynamic_cast<InlineCodeNode*>(node) || dynamic_cast<ConditionalFlagNode*>(node) || dynamic_cast<NoChangeNode*>(node))
         out.push_back(node);
-    } else {
+    else
         out.push_back(substituteMacros(node));
-    }
 }
 
 void Preprocessor::processIfWhileNode(IfWhileNode* node) {

@@ -121,9 +121,9 @@ std::vector<AST*> Parser::statement() {
         int ifRow = T(idx).row, ifCol = T(idx).col;
         idx++;
         AST* condition = expr();
-        if (T(prevIDX).value[0] == '#') {
+        if (T(prevIDX).value[0] == '#')
             nodes.push_back(new IfWhileNode(condition, parseBody(ifCol), TOKEN_IF, '#', ifRow, ifCol));
-        } else if (MATCH(idx, TOKEN_COLON)) {
+        else if (MATCH(idx, TOKEN_COLON)) {
             idx++;
             std::vector<AST*> ifBody = parseBody(ifCol);
             nodes.push_back(new IfWhileNode(condition, ifBody, TOKEN_IF, ifRow, ifCol));
@@ -406,19 +406,34 @@ std::vector<AST*> Parser::statement() {
         idx++;
         std::vector<AST*> body;
         while ((T(idx).col > T(prevIdx + 1).col || isMacro(idx)) && !isAtEnd()) {
-            if (isMacro(idx)) {
+            if (isMacro(idx))
                 for (AST* s : statement())
                     body.push_back(s);
-            } else {
+            else
                 body.push_back(expr());
-            }
         }
 
         nodes.push_back(new ImportanceNode(body, stmti, T(idx).row, T(idx).col));
-    } else {
+    } else if (current == TOKEN_CONDITION) {
+        const int prevIdx = idx;
+        idx++;
+        std::vector<AST*> body;
+        while (!isAtEnd() && (T(prevIdx).col > T(prevIdx + 1).col || isMacro(idx)))
+            for (AST* s : statement())
+                body.push_back(s);
+        nodes.push_back(new ConditionalFlagNode(expr(), body, T(idx).row, T(idx).col));
+    }
+    else if (current == TOKEN_NOCHANGE) {
+        const int prevIdx = idx;
+        idx++;
+        std::vector<AST*> body;
+        while (!isAtEnd() && (T(prevIdx).col > T(prevIdx + 1).col || isMacro(idx)))
+            for (AST* s : statement())
+                body.push_back(s);
+        nodes.push_back(new NoChangeNode(body, T(idx).row, T(idx).col));
+    } else
         if (!isAtEnd())
             nodes.push_back(expr());
-    }
 
     return nodes;
 }
@@ -462,11 +477,10 @@ bool Parser::isFunctionDefinition() {
         }
         if (i < tokens.size() && MATCH(i, TOKEN_MINUS)) {
             i++;
-            if (i < tokens.size() && T(i).value == "optional") {
+            if (i < tokens.size() && T(i).value == "optional")
                 i++;
-            } else {
+            else
                 return false;
-            }
         }
         if (i < tokens.size()) {
             if (TT(i) == TOKEN_COLON)
@@ -483,8 +497,8 @@ bool Parser::isFunctionDefinition() {
 
 AST* Parser::expr() {
     AST* node = term();
-    while (!isAtEnd() &&
-           (MATCH(idx, TOKEN_PLUS) || MATCH(idx, TOKEN_MINUS) ||
+    while (!isAtEnd() && (
+           MATCH(idx, TOKEN_PLUS) || MATCH(idx, TOKEN_MINUS) ||
            MATCH(idx, TOKEN_EQUAL) || MATCH(idx, TOKEN_GREATER) ||
            MATCH(idx, TOKEN_SHORTER) || MATCH(idx, TOKEN_GREATER_EQUAL) ||
            MATCH(idx, TOKEN_SHORTER_EQUAL) || MATCH(idx, TOKEN_AND) ||
